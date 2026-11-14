@@ -2,7 +2,7 @@
     "dataset_name": "NASA POWER Climate Dataset",
     "dataset_version": "1.0",
     "source": "NASA POWER",
-    "source_file": "data\\processed\\nasa_power_clean.csv",
+    "source_file": "data\\processed\\climate\\nasa_power_clean.csv",
     "output_file": "data\\processed\\climate\\nasa_power.parquet",
     "format": "Parquet",
     "compression": "Snappy",

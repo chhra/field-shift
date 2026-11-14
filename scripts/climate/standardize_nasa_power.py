@@ -14,6 +14,7 @@ INPUT_FILE = (
     PROJECT_ROOT
     / "data"
     / "processed"
+    / "climate"
     / "nasa_power_clean.csv"
 )
 
@@ -278,7 +279,7 @@ retrieved from NASA POWER and cleaned by FieldShift.
 ### Provenance
 
 - Source: NASA POWER
-- Original input: data/processed/nasa_power_clean.csv
+- Original input: data/processed/climate/nasa_power_clean.csv
 - Output: data/processed/climate/nasa_power.parquet
 - Processing: FieldShift standardization script
 

@@ -1,0 +1,28 @@
+crop,ecocrop_crop,role,suggest,family,sow_month,harvest_month,water_need,n_fixing,root_depth,drought_tolerance,market_value,note
+Winter wheat,Winter wheat,cash,yes,cereal,10,8,medium,no,deep,medium,high,
+Winter barley,Winter barley,cash,yes,cereal,9,7,medium,no,medium,medium,medium,
+Spring barley,Spring barley,cash,yes,cereal,3,8,medium,no,shallow,medium,medium,
+Spring oats,Spring oats,cash,yes,cereal,3,8,medium,no,medium,low,medium,
+Maize,Maize,cash,yes,cereal,4,10,high,no,medium,medium,medium,
+Winter field beans,Winter field beans,cash,yes,legume,10,8,medium,yes,deep,low,medium,
+Spring peas,Spring peas,cash,yes,legume,3,7,low,yes,medium,medium,medium,
+Winter oilseed rape,Winter oilseed rape,cash,yes,brassica,8,7,medium,no,deep,medium,high,
+Potatoes,Potatoes,cash,yes,solanaceae,4,9,high,no,shallow,low,high,
+Sugar beet,Sugar beet,cash,yes,beet,3,11,medium,no,deep,medium,medium,
+Grass ley (ryegrass),Grass ley (ryegrass),forage,yes,grass,8,0,medium,no,medium,low,low,harvest_month 0 = perennial ley
+Red clover ley,Red clover ley,forage,yes,legume,4,0,medium,yes,deep,medium,low,harvest_month 0 = perennial ley
+Rye,Rye,cash,yes,cereal,9,8,low,no,deep,high,low,
+Triticale,Triticale,cash,no,cereal,10,8,medium,no,deep,medium,low,no EcoCrop match: not suggested
+Spring field beans,Spring field beans,cash,yes,legume,3,9,medium,yes,deep,low,medium,
+Winter peas,Winter peas,cash,yes,legume,10,7,low,yes,medium,medium,medium,
+Carrots,Carrots,cash,yes,apiaceae,4,10,medium,no,medium,medium,high,
+Onions,Onions,cash,yes,allium,3,8,medium,no,shallow,low,high,
+Cabbage,Cabbage,cash,no,brassica,5,10,high,no,shallow,low,medium,no EcoCrop match: not suggested
+Broccoli,Broccoli,cash,yes,brassica,5,9,high,no,shallow,low,high,
+Lettuce,Lettuce,cash,yes,asteraceae,4,7,high,no,shallow,low,high,EcoCrop match is a synonym (var. capitata): review
+Strawberries,Strawberries,fruit,no,rosaceae,4,0,medium,no,shallow,low,high,multi-year fruit: not a rotation crop
+Apples,Apples,fruit,no,rosaceae,11,0,medium,no,deep,medium,high,multi-year fruit: not a rotation crop
+Raspberries,Raspberries,fruit,no,rosaceae,11,0,medium,no,medium,low,high,no EcoCrop match; multi-year fruit
+Field mustard,Field mustard,cash,yes,brassica,4,8,low,no,deep,medium,low,
+Rye (cover),Rye,cover,yes,cereal,9,2,low,no,medium,high,none,cover: harvest_month = month destroyed
+Field mustard (cover),Field mustard,cover,yes,brassica,8,11,low,no,medium,medium,none,cover: harvest_month = month destroyed

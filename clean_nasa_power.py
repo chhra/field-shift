@@ -13,7 +13,7 @@ INPUT_FILE = (
     "nasa_power_peartree_2000_2026.csv"
 )
 
-OUTPUT_DIR = ROOT / "data" / "processed"
+OUTPUT_DIR = ROOT / "data" / "processed" / "climate"
 OUTPUT_FILE = OUTPUT_DIR / "nasa_power_clean.csv"
 REPORT_FILE = OUTPUT_DIR / "nasa_power_quality_report.txt"
 
