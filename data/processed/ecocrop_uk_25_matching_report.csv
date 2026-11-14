@@ -1,0 +1,26 @@
+﻿crop_name,scientific_name_requested,match_type,matching_ecocrop_records,matched_scientific_names
+Winter wheat,Triticum aestivum,Exact,1,Triticum aestivum
+Winter barley,Hordeum vulgare,Exact,1,Hordeum vulgare
+Spring barley,Hordeum vulgare,Exact,1,Hordeum vulgare
+Spring oats,Avena sativa,Exact,1,Avena sativa
+Maize,Zea mays,Exact,1,Zea mays
+Winter field beans,Vicia faba,Exact,1,Vicia faba
+Spring peas,Pisum sativum,Exact,1,Pisum sativum
+Winter oilseed rape,Brassica napus,Exact,1,Brassica napus
+Potatoes,Solanum tuberosum,Exact,1,Solanum tuberosum
+Sugar beet,Beta vulgaris var. saccharifera,Exact,2,Beta vulgaris; Beta vulgaris var. saccharifera
+Grass ley (ryegrass),Lolium perenne,Exact,1,Lolium perenne
+Red clover ley,Trifolium pratense,Exact,1,Trifolium pratense
+Rye,Secale cereale,Exact,1,Secale cereale
+Triticale,× Triticosecale,Missing,0,
+Spring field beans,Vicia faba,Exact,1,Vicia faba
+Winter peas,Pisum sativum,Exact,1,Pisum sativum
+Carrots,Daucus carota,Exact,1,Daucus carota
+Onions,Allium cepa,Exact,1,Allium cepa
+Cabbage,Brassica oleracea,Missing,0,
+Broccoli,Brassica oleracea var. italica,Exact,1,Brassica oleracea var. italica
+Lettuce,Lactuca sativa,Synonym - review,1,Lactuca sativa var. capitata
+Strawberries,Fragaria × ananassa,Exact,1,Fragaria x ananassa
+Apples,Malus domestica,Exact,1,Malus domestica
+Raspberries,Rubus idaeus,Missing,0,
+Field mustard,Brassica juncea,Exact,1,Brassica juncea
