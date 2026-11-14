@@ -78,6 +78,8 @@ HOW TO RUN
 import json
 import re
 import warnings
+from collections import Counter
+from functools import lru_cache
 from pathlib import Path
 
 import pandas as pd
@@ -104,6 +106,10 @@ RECENT_YEARS = 10          # heat stress is judged on the last 10 full years
 HEAT_RISK_DAYS = 3         # >= 3 heat-stress days a year at flowering -> risk; >= 1 -> check
 WINTER_KILL_RISK_PCT = 20  # killing frost in >= 20% of winters -> risk; any -> check
 SPRING_FROST_CHECK_PCT = 25  # frost below the growing kill temperature after sowing in >= 25% of years -> check
+
+# Candidate rotations (see candidates()): the model may make the rotation up to
+# 2 years longer by adding break crops, but never longer than this.
+MAX_ROTATION_YEARS = 5
 
 # EcoCrop column codes -> the names used in this model.
 # ktmpr is the killing temperature while the crop is dormant (winter), which is the
@@ -199,7 +205,9 @@ def load_crops(ecocrop_path=ECOCROP_FILE, practices_path=PRACTICES_FILE, heat_pa
                       f"(ignored): {sorted(unknown)}", stacklevel=2)
     crops = crops.merge(heat[["crop", "heat_threshold_c", "heat_months",
                               "heat_confidence", "heat_source"]], on="crop", how="left")
-    return {row["crop"]: row for _, row in crops.iterrows()}
+    # plain dictionaries, not pandas rows: reading a value from a dict is ~20x
+    # faster, and the scoring reads crop values hundreds of thousands of times
+    return {row["crop"]: row for row in crops.to_dict("records")}
 
 
 def load_successors(path=SUCCESSORS_FILE):
@@ -248,13 +256,20 @@ def months_between(a, b):
     We use this to find the months when a field is bare: after one crop is
     harvested and before the next one is sown.
     """
+    return list(_months_between(a, b))
+
+
+@lru_cache(maxsize=None)
+def _months_between(a, b):
+    """The work behind months_between(), remembered for each (a, b) pair
+    because the scoring asks for the same pairs thousands of times."""
     if a == b:
-        return []
+        return ()
     out, m = [], a % 12 + 1          # start from the month after a (Dec -> Jan wraps round)
     while m != b and len(out) < 12:  # keep going until we reach b (max 12 months, for safety)
         out.append(m)
         m = m % 12 + 1               # next month, wrapping Dec (12) -> Jan (1)
-    return out
+    return tuple(out)
 
 
 def is_perennial(c):
@@ -541,10 +556,52 @@ def crop_climate(c, weather, warming_c=0.0):
 
 
 # =============================================================================
+# COMPARING ROTATIONS - how different is a rotation from the farmer's current one?
+# =============================================================================
+#
+# A rotation is a CYCLE: wheat -> maize -> barley -> wheat -> ... So
+# "wheat, maize, barley" and "maize, barley, wheat" are the same rotation,
+# just started in a different year.
+# =============================================================================
+
+def same_cycle(a, b):
+    """True if rotation a is rotation b started in a different year.
+    same_cycle(["W", "M", "B"], ["M", "B", "W"]) -> True"""
+    return len(a) == len(b) and any(list(a) == list(b[i:]) + list(b[:i]) for i in range(len(b)))
+
+
+def count_changes(names, current):
+    """How many changes the farmer would make to go from `current` to `names`.
+
+    Counts crops, not positions:
+        swap one crop for another     -> 1   (one in, one out)
+        add one crop (longer rotation) -> 1
+        drop one crop                  -> 1
+        same crops in a new order      -> 0.5 (a small change, but still one)
+        same rotation, started in a different year -> 0
+    """
+    added = sum((Counter(names) - Counter(current)).values())
+    removed = sum((Counter(current) - Counter(names)).values())
+    changed = max(added, removed)
+    if changed == 0 and not same_cycle(names, current):
+        changed = 0.5
+    return changed
+
+
+def canonical(seq, current):
+    """Pick ONE way of writing a rotation, so the same cycle isn't scored twice.
+    Starts with the farmer's first crop if it's in there (so it reads like
+    their own plan), otherwise with the alphabetically first start."""
+    turns = [tuple(seq[i:]) + tuple(seq[:i]) for i in range(len(seq))]
+    own = [t for t in turns if current and t[0] == current[0]]
+    return min(own) if own else min(turns)
+
+
+# =============================================================================
 # STEPS B + C: SCORING A ROTATION
 # =============================================================================
 
-def score(rotation, farm, crops, prio, successors, current=None, climate=None):
+def score(rotation, farm, crops, prio, successors, current=None, climate=None, suit=None):
     """Score one rotation and explain the score.
 
     Points are collected in separate "buckets" (soil, water, fertility...), so we
@@ -566,6 +623,8 @@ def score(rotation, farm, crops, prio, successors, current=None, climate=None):
         current     the farmer's current crops (to penalise big changes); None to skip
         climate     crop name -> crop_climate() result; None to skip the heat and
                     daily-frost rules (the simple frost check in suitability() is used)
+        suit        crop name -> suitability() result, worked out once in recommend()
+                    so it isn't recomputed for every rotation; None to compute here
     """
     pts = {"soil": 0, "water": 0, "fertility": 0, "sequence": 0,
            "income": 0, "climate": 0, "change": 0}
@@ -678,12 +737,11 @@ def score(rotation, farm, crops, prio, successors, current=None, climate=None):
 
     # -------------------------------------------------------------------------
     # CHANGE PENALTY: farmers prefer small, practical changes
-    # -1 for every crop that differs from the current rotation, so the model
-    # doesn't suggest throwing the whole farm plan away for a tiny gain.
+    # -1 for every crop swapped in or added, so the model doesn't suggest
+    # throwing the whole farm plan away for a tiny gain (see count_changes).
     # -------------------------------------------------------------------------
     if current:
-        changed = sum(1 for a, b in zip(names, current) if a != b) + abs(len(names) - len(current))
-        pts["change"] -= changed
+        pts["change"] -= count_changes(names, current)
 
     # -------------------------------------------------------------------------
     # RULE B5 / B6: water
@@ -721,7 +779,8 @@ def score(rotation, farm, crops, prio, successors, current=None, climate=None):
     # Unsuitable crops get a big penalty; "possible" crops a small one plus a check.
     # -------------------------------------------------------------------------
     for c in mains:
-        level, notes = suitability(c, farm, check_frost=climate is None)
+        level, notes = (suit[c["crop"]] if suit is not None
+                        else suitability(c, farm, check_frost=climate is None))
         if level == "unsuitable":
             pts["climate"] -= 10
             risks.append(f"{c['crop']} is unsuitable here: {notes[0]}.")
@@ -806,9 +865,17 @@ def score(rotation, farm, crops, prio, successors, current=None, climate=None):
 # STEP D: BUILD CANDIDATE ROTATIONS AND PICK THE BEST
 # =============================================================================
 
-def add_covers(rotation, farm, crops):
+def usable_covers(farm, crops):
+    """Cover crops the model may add: marked suggest = "yes" and able to grow here."""
+    return [n for n, c in crops.items()
+            if c["role"] == "cover" and c["suggest"] == "yes"
+            and suitability(c, farm)[0] in ("ideal", "possible")]
+
+
+def add_covers(rotation, farm, crops, covers=None):
     """Add the best cover crop into every gap where the soil would be bare in the
-    farm's wet months.
+    farm's wet months. `covers` is the list of usable cover crops (worked out
+    once by candidates()); None to work it out here.
 
     For each gap it looks at all cover crops that fit, and picks the best using
     (in order of importance):
@@ -816,10 +883,8 @@ def add_covers(rotation, farm, crops):
         2. covers the most wet months
         3. is a legume (adds free nitrogen)
     """
-    # only cover crops that can grow in this climate
-    covers = [n for n, c in crops.items()
-              if c["role"] == "cover" and c["suggest"] == "yes"
-              and suitability(c, farm)[0] in ("ideal", "possible")]
+    if covers is None:
+        covers = usable_covers(farm, crops)
     names = [m for m, _ in rotation]
     out = []
     for i, (main, _) in enumerate(rotation):
@@ -845,38 +910,71 @@ def candidates(current, farm, crops):
     """Make all the rotations worth considering.
 
     Starting from the farmer's current rotation, it creates:
-      - every rotation that changes ONE crop
-      - every rotation that changes TWO crops
-    using any cash or forage crop that can grow in this climate.
+      A. same length:   every rotation that swaps ONE or TWO crops
+      B. 1 year longer: add one BREAK crop anywhere, to the current rotation or
+                        to a rotation with one crop swapped
+      C. 2 years longer: add two break crops anywhere to the current rotation
+    using any cash or forage crop that can grow in this climate. Break crops are
+    the non-cereals (legumes, brassicas, potatoes, beet, leys, vegetables): they
+    are what a longer rotation is for, e.g. room for peas only every 5 years.
+    Rotations never get longer than MAX_ROTATION_YEARS.
+
     Crops marked suggest = "no" in crop_practices.csv (fruit, and crops with no
     EcoCrop data) are never swapped in, but can still be in the current rotation.
-    Each of these is tried twice: without cover crops and with cover crops added.
-
-    For a 3-crop rotation this is a few hundred candidates, which takes well
-    under a second to score.
+    Each rotation is tried twice: without cover crops and with cover crops added.
+    The same cycle written from a different starting year is only scored once.
     """
     swaps = [n for n, c in crops.items()
              if c["role"] in ("cash", "forage") and c["suggest"] == "yes"
              and suitability(c, farm)[0] in ("ideal", "possible")]
+    breaks = [n for n in swaps if crops[n]["family"] != "cereal"]
+    n = len(current)
 
-    # a set removes duplicates (e.g. the same rotation reached in two different ways)
+    def insert(seq, pos, crop):
+        """seq with `crop` added before position pos (pos = len(seq) is the
+        same cycle as pos = 0, so positions 0 .. len-1 cover every place)."""
+        return tuple(seq[:pos]) + (crop,) + tuple(seq[pos:])
+
+    # A. swap one or two crops (same length)
+    one_swap = set()
     seqs = {tuple(current)}
-    for i in range(len(current)):            # change crop i...
+    for i in range(n):                       # change crop i...
         for s in swaps:
             one = list(current)
             one[i] = s
-            seqs.add(tuple(one))
-            for j in range(i + 1, len(current)):   # ...and optionally crop j as well
+            one_swap.add(tuple(one))
+            for j in range(i + 1, n):        # ...and optionally crop j as well
                 for t in swaps:
                     two = list(one)
                     two[j] = t
                     seqs.add(tuple(two))
+    seqs |= one_swap
 
+    # B. one year longer: add a break crop (to the current or a one-swap rotation)
+    if n + 1 <= MAX_ROTATION_YEARS:
+        for base in {tuple(current)} | one_swap:
+            for pos in range(n):
+                for b in breaks:
+                    seqs.add(insert(base, pos, b))
+
+    # C. two years longer: add two break crops to the current rotation
+    if n + 2 <= MAX_ROTATION_YEARS:
+        for p in range(n):
+            for b1 in breaks:
+                longer = insert(current, p, b1)
+                for q in range(n + 1):
+                    for b2 in breaks:
+                        seqs.add(insert(longer, q, b2))
+
+    # the same cycle started in a different year is the same rotation: keep one
+    seqs = {canonical(s, current) for s in seqs}
+
+    covers = usable_covers(farm, crops)
     cands = []
     for seq in sorted(seqs):   # sorted, so the order is the same every run
         base = [(c, None) for c in seq]            # without cover crops
         cands.append(base)
-        with_covers = add_covers(base, farm, crops)
+        with_covers = add_covers(base, farm, crops, covers)
         if with_covers != base:                    # with cover crops, if any were added
             cands.append(with_covers)
     return cands
@@ -927,19 +1025,21 @@ def recommend(current, farm, priorities, crops, successors, weather=None, warmin
     climate = None
     if weather is not None:
         climate = {name: crop_climate(c, weather, warming_c) for name, c in crops.items()}
+    # each crop's climate fit, also worked out once
+    suit = {name: suitability(c, farm, check_frost=climate is None) for name, c in crops.items()}
 
     # 1. Score the farmer's current rotation (no cover crops), to compare against
     current_rot = [(c, None) for c in current]
     cur = {"name": "Current rotation", "rotation": describe(current_rot), "crops": current_rot,
-           **score(current_rot, farm, crops, priorities, successors, current, climate)}
+           **score(current_rot, farm, crops, priorities, successors, current, climate, suit)}
 
-    # 2. Score every candidate rotation
+    # 2. Score every candidate rotation (skipping the current one, in any starting year)
     scored = []
     for rot in candidates(current, farm, crops):
-        if rot == current_rot:
+        if not any(cv for _, cv in rot) and same_cycle([m for m, _ in rot], current):
             continue
         scored.append({"rotation": describe(rot), "crops": rot,
-                       **score(rot, farm, crops, priorities, successors, current, climate)})
+                       **score(rot, farm, crops, priorities, successors, current, climate, suit)})
 
     # 3. Sort from highest to lowest score.
     #    If two rotations have the SAME score, prefer the one with fewer changes
