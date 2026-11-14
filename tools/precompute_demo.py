@@ -8,9 +8,9 @@ For Iowa, Cambridgeshire (UK), Punjab:
 
 Usage::
 
-    python scripts/precompute_demo.py
-    python scripts/precompute_demo.py --skip-extract   # reuse existing tidy/daily
-    python scripts/precompute_demo.py --skip-gif
+    python tools/precompute_demo.py
+    python tools/precompute_demo.py --skip-extract   # reuse existing tidy/daily
+    python tools/precompute_demo.py --skip-gif
 """
 
 from __future__ import annotations

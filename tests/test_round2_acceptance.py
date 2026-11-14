@@ -19,7 +19,7 @@ def _load(name: str) -> tuple[pd.DataFrame, pd.DataFrame]:
     tidy_p = FIXTURE_DIR / f"{name}_tidy.parquet"
     daily_p = FIXTURE_DIR / f"{name}_daily.parquet"
     if not tidy_p.exists() or not daily_p.exists():
-        pytest.skip(f"{name} fixtures missing — run scripts/cache_demo_extracts.py")
+        pytest.skip(f"{name} fixtures missing — run tools/cache_demo_extracts.py")
     return pd.read_parquet(tidy_p), pd.read_parquet(daily_p)
 
 

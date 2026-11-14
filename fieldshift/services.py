@@ -88,7 +88,7 @@ def _load_demo_tables(field_id: str) -> tuple[pd.DataFrame, pd.DataFrame]:
         daily_p = fixtures / f"{field_id}_daily.parquet"
     if not tidy_p.exists() or not daily_p.exists():
         raise FileNotFoundError(
-            f"No tidy/daily cache for {field_id} — run scripts/precompute_demo.py"
+            f"No tidy/daily cache for {field_id} — run tools/precompute_demo.py"
         )
     return pd.read_parquet(tidy_p), pd.read_parquet(daily_p)
 
@@ -177,7 +177,7 @@ def get_timelapse(field_id: str, index: str = "ndvi") -> dict[str, Any]:
         "cached_static": False,
         "field_id": field_id,
         "index": mode,
-        "message": "Timelapse GIF not found — run scripts/precompute_demo.py",
+        "message": "Timelapse GIF not found — run tools/precompute_demo.py",
     }
 
 

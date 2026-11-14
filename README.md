@@ -15,8 +15,8 @@ pip install -r requirements.txt          # runtime (Cloud / Docker)
 
 # Optional: Earth Engine secrets (never commit)
 # place service account JSON at secrets/ee-key.json
-python scripts/make_secrets.py          # local .streamlit/secrets.toml (path-based)
-python scripts/print_cloud_secrets.py   # secrets/cloud_secrets.toml for Cloud copy-paste
+python tools/make_secrets.py          # local .streamlit/secrets.toml (path-based)
+python tools/print_cloud_secrets.py   # secrets/cloud_secrets.toml for Cloud copy-paste
 
 streamlit run app.py
 ```
@@ -40,7 +40,7 @@ python -m fieldshift.data.extract --lat 42.0 --lon -93.6 --size-ha 60
 ### Verify Earth Engine datasets (§4)
 
 ```bash
-python scripts/verify_ee.py
+python tools/verify_ee.py
 ```
 
 ## Deploy — Streamlit Community Cloud

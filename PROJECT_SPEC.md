@@ -416,7 +416,7 @@ jargon without a help tooltip. Live analysis spinner: "Analyzing 10 years of NAS
 
 ---
 
-## 9. Demo fields (`scripts/precompute_demo.py`)
+## 9. Demo fields (`tools/precompute_demo.py`)
 
 Pre-compute and commit JSON for 3 contrasting fields. Draw a ~50–100 ha polygon on cropland near each point and
 check visually on the satellite basemap that it is actually farmland. Adjust the coordinates if not:
@@ -471,7 +471,7 @@ Live fields may request a fresh EE URL (TTL ≤ 1 hour) when credentials are pre
    bands (print them). A CLI `python -m fieldshift.data.extract_ee --lat .. --lon ..` prints the monthly table
    for one field.
 3. **Engine:** `crops.json`, features, anomalies, candidates, scoring, scenarios, explain, all with unit tests.
-4. **Wire package + demos:** Streamlit calls `fieldshift` for demo fields; run `scripts/precompute_demo.py`
+4. **Wire package + demos:** Streamlit calls `fieldshift` for demo fields; run `tools/precompute_demo.py`
    (or document the credentialed command for me); commit `fieldshift/cache/demo_*.json` (+ static GIF
    timelapses). `@st.cache_data` on loads; graceful empty US/validation until Phase 7.
 5. **Full Field UX:** replace mocks with real package results. Complete §8 (conditions Plotly chart, Folium

@@ -20,7 +20,7 @@ DAILY_PATH = FIXTURE_DIR / "iowa_daily.parquet"
 @pytest.fixture(scope="module")
 def iowa_data() -> tuple[pd.DataFrame, pd.DataFrame]:
     if not TIDY_PATH.exists() or not DAILY_PATH.exists():
-        pytest.skip("Iowa fixtures missing — run scripts/cache_demo_extracts.py")
+        pytest.skip("Iowa fixtures missing — run tools/cache_demo_extracts.py")
     tidy = pd.read_parquet(TIDY_PATH)
     daily = pd.read_parquet(DAILY_PATH)
     return tidy, daily
