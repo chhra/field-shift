@@ -17,12 +17,7 @@ from fieldshift.engine.crops import crop_by_id, load_crops
 from fieldshift.engine.features import compute_features
 from fieldshift.engine.generate import generate_strategies
 from fieldshift.engine.scenarios import apply_scenario
-from fieldshift.engine.scoring import (
-    COVER_ESTABLISHMENT_PENALTY,
-    score_income,
-    score_strategy,
-    score_water,
-)
+from fieldshift.engine.scoring import score_market, score_strategy, score_water
 from fieldshift.models import PriorityWeights, ScenarioParams, StrategyRequest
 
 
@@ -206,12 +201,11 @@ def test_scoring_monotonic_water_with_more_rain() -> None:
     assert score_water(seq, feats_wet) > score_water(seq, feats_dry)
 
 
-def test_income_cover_not_averaged_and_small_penalty() -> None:
-    cash = score_income(["maize", "soybean"], livestock=False)
-    with_cover = score_income(["maize", "soybean", "cereal_rye_cover"], livestock=False)
+def test_market_score_ignores_cover_in_mean() -> None:
+    cash = score_market(["maize", "soybean"])
+    with_cover = score_market(["maize", "soybean", "cereal_rye_cover"])
     assert cash == pytest.approx(0.9)
-    assert with_cover == pytest.approx(cash - COVER_ESTABLISHMENT_PENALTY)
-    assert abs(cash - with_cover) <= 0.05 + 1e-9
+    assert with_cover == pytest.approx(cash)
 
 
 def test_cover_raises_soil_health() -> None:
@@ -226,9 +220,9 @@ def test_cover_raises_soil_health() -> None:
     }
     base = score_strategy(["maize", "soybean"], feats)
     with_cover = score_strategy(["maize", "soybean", "cereal_rye_cover"], feats)
-    assert with_cover.soil_health >= base.soil_health
+    assert with_cover.organic_matter >= base.organic_matter
     assert with_cover.erosion >= base.erosion
-    assert abs(with_cover.income - base.income) <= 0.05 + 1e-9
+    assert abs(with_cover.market - base.market) <= 0.05 + 1e-9
 
 
 def test_candidate_skips_water_wise_when_mild() -> None:

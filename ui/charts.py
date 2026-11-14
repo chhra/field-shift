@@ -137,8 +137,8 @@ def conditions_figure(conditions: FieldConditions) -> go.Figure:
     )
 
     fig.update_layout(
-        margin={"l": 64, "r": 72, "t": 40, "b": 48},
-        height=400,
+        margin={"l": 56, "r": 64, "t": 48, "b": 48},
+        height=420,
         legend={
             "orientation": "h",
             "y": 1.14,
@@ -182,14 +182,14 @@ def conditions_figure(conditions: FieldConditions) -> go.Figure:
 
 
 def scores_bar(scores: ScoreSet, *, height: int = 175) -> go.Figure:
-    """Compact horizontal criterion score bar (6 criteria, fixed colours)."""
+    """Compact horizontal criterion score bar (6 farmer goals, fixed colours)."""
     items = [
         ("Water", scores.water, SCORE_COLORS["water"]),
-        ("Soil", scores.soil_health, SCORE_COLORS["soil_health"]),
+        ("Forage", scores.forage, SCORE_COLORS["forage"]),
+        ("Nitrogen", scores.nitrogen, SCORE_COLORS["nitrogen"]),
         ("Erosion", scores.erosion, SCORE_COLORS["erosion"]),
-        ("Pest", scores.pest_break, SCORE_COLORS["pest_break"]),
-        ("Climate", scores.climate_fit, SCORE_COLORS["climate_fit"]),
-        ("Income", scores.income, SCORE_COLORS["income"]),
+        ("Organic matter", scores.organic_matter, SCORE_COLORS["organic_matter"]),
+        ("Market", scores.market, SCORE_COLORS["market"]),
     ]
     pcts = [int(round(max(0.0, min(1.0, i[1])) * 100)) for i in items]
     fig = go.Figure(

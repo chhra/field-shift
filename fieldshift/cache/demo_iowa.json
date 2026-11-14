@@ -491,53 +491,82 @@
       "maize",
       "soybean"
     ],
-    "soil_type": "unknown",
+    "water_category": "rain_only",
+    "soil_category": "loamy",
+    "soil_type": "loam",
     "water_access": "rainfed",
-    "livestock": false,
-    "weights": {
-      "water": 1.0,
-      "soil_health": 1.0,
-      "erosion": 1.0,
-      "pest_break": 1.0,
-      "climate_fit": 1.0,
-      "income": 1.0
+    "goal_importance": {
+      "water": 1,
+      "forage": 0,
+      "nitrogen": 1,
+      "erosion": 1,
+      "organic_matter": 1,
+      "market": 2
     },
+    "weights": {
+      "water": 0.16666666666666666,
+      "forage": 0.0,
+      "nitrogen": 0.16666666666666666,
+      "erosion": 0.16666666666666666,
+      "organic_matter": 0.16666666666666666,
+      "market": 0.3333333333333333
+    },
+    "constraints": {},
     "scenario": {
       "rain_mult": 1.0,
       "temp_offset": 0.0
-    }
+    },
+    "plant_month_overrides": {},
+    "harvest_month_overrides": {},
+    "input_data_gaps": [
+      "Demo answers \u2014 Central Iowa"
+    ],
+    "input_confidence_penalty": false,
+    "equal_weights_note": null
   },
   "default_strategies": {
     "field_id": "iowa",
     "strategies": [
       {
-        "id": "current_plus_cover",
-        "name": "Maize / corn \u2192 Soybean \u2192 Cereal rye (cover crop)",
+        "id": "forage_legume",
+        "name": "Maize / corn \u2192 Soybean \u2192 Alfalfa",
         "sequence": [
           {
             "crop_id": "maize",
-            "months": "summer May\u2013Oct"
+            "months": "summer May\u2013Oct",
+            "plant_month": null,
+            "harvest_month": null
           },
           {
             "crop_id": "soybean",
-            "months": "summer May\u2013Oct"
+            "months": "summer May\u2013Oct",
+            "plant_month": null,
+            "harvest_month": null
           },
           {
-            "crop_id": "cereal_rye_cover",
-            "months": "Oct\u2013Apr"
+            "crop_id": "alfalfa",
+            "months": "Apr\u2013Oct",
+            "plant_month": null,
+            "harvest_month": null
           }
         ],
         "scores": {
-          "water": 0.5904200220372646,
-          "soil_health": 0.5616666666666666,
+          "water": 0.6821054005940176,
+          "forage": 0.0,
+          "nitrogen": 0.6666666666666666,
           "erosion": 0.43039714067430745,
-          "pest_break": 0.6666666666666666,
-          "climate_fit": 0.637060098444472,
-          "income": 0.85,
-          "total": 0.6227017657482296
+          "organic_matter": 0.6383333333333332,
+          "market": 0.7999999999999999,
+          "total": 0.669583756878054
         },
         "delta_vs_current": {
-          "total": 0.0094
+          "water": 0.0302,
+          "forage": 0.0,
+          "nitrogen": 0.1667,
+          "erosion": 0.0551,
+          "organic_matter": 0.0671,
+          "market": -0.1,
+          "total": 0.0198
         },
         "why": "Nov\u2013Apr bare in 9 of 10 years (Sentinel-2 NDVI) Year-to-year rain variability is high (CV=0.26).",
         "evidence": [
@@ -578,22 +607,32 @@
           }
         ],
         "benefits": [
-          "Includes a nitrogen-fixing crop",
-          "Winter/off-season ground cover",
-          "More than one plant family in the rotation"
+          "Breaks the cycle of maize / corn pests (different crop family: fabaceae)",
+          "Cover or deep roots can help water soak in between rains",
+          "Supplemental income or feed value possible from Alfalfa",
+          "Lower water demand than your current rotation",
+          "Adds nitrogen naturally via a legume"
         ],
         "data_gaps": [
           "NDVI did not confirm calendar-derived fallow window [1, 2, 3, 4, 10, 11, 12]",
+          "Demo answers \u2014 Central Iowa",
           "grace_lwe_cm: 43 gap months (data through September 2024)",
           "ndvi_s2: 1 gap months (data through September 2026)",
           "IsolationForest (contamination=0.08, years=11) flags unusual patterns, not causes. Growing-season flags = crop vulnerability; winter/off-season flags are separate."
         ],
         "risks_for_local_review": [
-          "Check local seed availability and herbicide carryover",
-          "Confirm planting windows with a local agronomist",
+          "Check machinery and labour needs for this rotation locally",
+          "Confirm seed availability in your area",
+          "Check local prices and buyers before changing crops",
+          "Review pest and herbicide carryover with a local adviser",
           "Crop parameter values need local expert review"
         ],
-        "confidence": "medium"
+        "confidence": "medium",
+        "tier": "worth_considering",
+        "tier_label": "\u25c7 Worth considering",
+        "tier_reason": "Within 0.05 of the best suitable option.",
+        "unsuitable_reasons": [],
+        "soft_notes": []
       },
       {
         "id": "current",
@@ -601,23 +640,33 @@
         "sequence": [
           {
             "crop_id": "maize",
-            "months": "summer May\u2013Oct"
+            "months": "summer May\u2013Oct",
+            "plant_month": null,
+            "harvest_month": null
           },
           {
             "crop_id": "soybean",
-            "months": "summer May\u2013Oct"
+            "months": "summer May\u2013Oct",
+            "plant_month": null,
+            "harvest_month": null
           }
         ],
         "scores": {
-          "water": 0.5904200220372646,
-          "soil_health": 0.54875,
+          "water": 0.6518570187316749,
+          "forage": 0.0,
+          "nitrogen": 0.5,
           "erosion": 0.37534634361131464,
-          "pest_break": 0.6666666666666666,
-          "climate_fit": 0.5988844218007559,
-          "income": 0.9,
-          "total": 0.6133445756860003
+          "organic_matter": 0.57125,
+          "market": 0.9,
+          "total": 0.6497422270571649
         },
         "delta_vs_current": {
+          "water": 0.0,
+          "forage": 0.0,
+          "nitrogen": 0.0,
+          "erosion": 0.0,
+          "organic_matter": 0.0,
+          "market": 0.0,
           "total": 0.0
         },
         "why": "Nov\u2013Apr bare in 9 of 10 years (Sentinel-2 NDVI) Year-to-year rain variability is high (CV=0.26).",
@@ -659,50 +708,70 @@
           }
         ],
         "benefits": [
-          "Includes a nitrogen-fixing crop",
-          "More than one plant family in the rotation"
+          "Breaks the cycle of maize / corn pests (different crop family: fabaceae)",
+          "Adds nitrogen naturally via a legume"
         ],
         "data_gaps": [
           "NDVI did not confirm calendar-derived fallow window [1, 2, 3, 4, 10, 11, 12]",
+          "Demo answers \u2014 Central Iowa",
           "grace_lwe_cm: 43 gap months (data through September 2024)",
           "ndvi_s2: 1 gap months (data through September 2026)",
           "IsolationForest (contamination=0.08, years=11) flags unusual patterns, not causes. Growing-season flags = crop vulnerability; winter/off-season flags are separate."
         ],
         "risks_for_local_review": [
-          "Check local seed availability and herbicide carryover",
-          "Confirm planting windows with a local agronomist",
+          "Check machinery and labour needs for this rotation locally",
+          "Confirm seed availability in your area",
+          "Check local prices and buyers before changing crops",
+          "Review pest and herbicide carryover with a local adviser",
           "Crop parameter values need local expert review"
         ],
-        "confidence": "medium"
+        "confidence": "medium",
+        "tier": "baseline",
+        "tier_label": "\u25ce Your rotation today",
+        "tier_reason": "This is the rotation you said you grow today.",
+        "unsuitable_reasons": [],
+        "soft_notes": []
       },
       {
-        "id": "forage_legume",
-        "name": "Maize / corn \u2192 Soybean \u2192 Alfalfa",
+        "id": "current_plus_cover",
+        "name": "Maize / corn \u2192 Soybean \u2192 Cereal rye (cover crop)",
         "sequence": [
           {
             "crop_id": "maize",
-            "months": "summer May\u2013Oct"
+            "months": "summer May\u2013Oct",
+            "plant_month": null,
+            "harvest_month": null
           },
           {
             "crop_id": "soybean",
-            "months": "summer May\u2013Oct"
+            "months": "summer May\u2013Oct",
+            "plant_month": null,
+            "harvest_month": null
           },
           {
-            "crop_id": "alfalfa",
-            "months": "Apr\u2013Oct"
+            "crop_id": "cereal_rye_cover",
+            "months": "Oct\u2013Apr",
+            "plant_month": null,
+            "harvest_month": null
           }
         ],
         "scores": {
-          "water": 0.6260063536400207,
-          "soil_health": 0.645,
+          "water": 0.6518570187316749,
+          "forage": 0.0,
+          "nitrogen": 0.3333333333333333,
           "erosion": 0.43039714067430745,
-          "pest_break": 0.5166666666666666,
-          "climate_fit": 0.6252866025840446,
-          "income": 0.7999999999999999,
-          "total": 0.6072261272608399
+          "organic_matter": 0.6616666666666666,
+          "market": 0.9,
+          "total": 0.6462090265676637
         },
         "delta_vs_current": {
-          "total": -0.0061
+          "water": 0.0,
+          "forage": 0.0,
+          "nitrogen": -0.1667,
+          "erosion": 0.0551,
+          "organic_matter": 0.0904,
+          "market": 0.0,
+          "total": -0.0035
         },
         "why": "Nov\u2013Apr bare in 9 of 10 years (Sentinel-2 NDVI) Year-to-year rain variability is high (CV=0.26).",
         "evidence": [
@@ -743,21 +812,32 @@
           }
         ],
         "benefits": [
-          "Includes a nitrogen-fixing crop",
-          "More than one plant family in the rotation"
+          "Breaks the cycle of maize / corn pests (different crop family: fabaceae)",
+          "Breaks the cycle of soybean pests (different crop family: poaceae)",
+          "Cover or deep roots can help water soak in between rains",
+          "Supplemental income or feed value possible from Cereal rye (cover crop)",
+          "Adds nitrogen naturally via a legume"
         ],
         "data_gaps": [
           "NDVI did not confirm calendar-derived fallow window [1, 2, 3, 4, 10, 11, 12]",
+          "Demo answers \u2014 Central Iowa",
           "grace_lwe_cm: 43 gap months (data through September 2024)",
           "ndvi_s2: 1 gap months (data through September 2026)",
           "IsolationForest (contamination=0.08, years=11) flags unusual patterns, not causes. Growing-season flags = crop vulnerability; winter/off-season flags are separate."
         ],
         "risks_for_local_review": [
-          "Check local seed availability and herbicide carryover",
-          "Confirm planting windows with a local agronomist",
+          "Check machinery and labour needs for this rotation locally",
+          "Confirm seed availability in your area",
+          "Check local prices and buyers before changing crops",
+          "Review pest and herbicide carryover with a local adviser",
           "Crop parameter values need local expert review"
         ],
-        "confidence": "medium"
+        "confidence": "medium",
+        "tier": "worth_considering",
+        "tier_label": "\u25c7 Worth considering",
+        "tier_reason": "Within 0.05 of the best suitable option.",
+        "unsuitable_reasons": [],
+        "soft_notes": []
       },
       {
         "id": "diversified_3yr",
@@ -765,32 +845,46 @@
         "sequence": [
           {
             "crop_id": "maize",
-            "months": "summer May\u2013Oct"
+            "months": "summer May\u2013Oct",
+            "plant_month": null,
+            "harvest_month": null
           },
           {
             "crop_id": "soybean",
-            "months": "summer May\u2013Oct"
+            "months": "summer May\u2013Oct",
+            "plant_month": null,
+            "harvest_month": null
           },
           {
             "crop_id": "winter_wheat",
-            "months": "Sep\u2013Jul"
+            "months": "Sep\u2013Jul",
+            "plant_month": null,
+            "harvest_month": null
           },
           {
             "crop_id": "cereal_rye_cover",
-            "months": "Oct\u2013Apr"
+            "months": "Oct\u2013Apr",
+            "plant_month": null,
+            "harvest_month": null
           }
         ],
         "scores": {
-          "water": 0.6257491024960751,
-          "soil_health": 0.5308333333333333,
+          "water": 0.6818867371216638,
+          "forage": 0.0,
+          "nitrogen": 0.25,
           "erosion": 0.4278948317168987,
-          "pest_break": 0.35,
-          "climate_fit": 0.6473773332929568,
-          "income": 0.7499999999999999,
-          "total": 0.5553091001398772
+          "organic_matter": 0.6529166666666666,
+          "market": 0.7999999999999999,
+          "total": 0.6021163725842048
         },
         "delta_vs_current": {
-          "total": -0.058
+          "water": 0.03,
+          "forage": 0.0,
+          "nitrogen": -0.25,
+          "erosion": 0.0525,
+          "organic_matter": 0.0817,
+          "market": -0.1,
+          "total": -0.0476
         },
         "why": "Nov\u2013Apr bare in 9 of 10 years (Sentinel-2 NDVI) Year-to-year rain variability is high (CV=0.26).",
         "evidence": [
@@ -831,22 +925,33 @@
           }
         ],
         "benefits": [
-          "Includes a nitrogen-fixing crop",
-          "Winter/off-season ground cover",
-          "More than one plant family in the rotation"
+          "Breaks the cycle of maize / corn pests (different crop family: fabaceae)",
+          "Breaks the cycle of soybean pests (different crop family: poaceae)",
+          "Cover or deep roots can help water soak in between rains",
+          "Supplemental income or feed value possible from Cereal rye (cover crop)",
+          "Lower water demand than your current rotation",
+          "Adds nitrogen naturally via a legume"
         ],
         "data_gaps": [
           "NDVI did not confirm calendar-derived fallow window [1, 2, 3, 4, 10, 11, 12]",
+          "Demo answers \u2014 Central Iowa",
           "grace_lwe_cm: 43 gap months (data through September 2024)",
           "ndvi_s2: 1 gap months (data through September 2026)",
           "IsolationForest (contamination=0.08, years=11) flags unusual patterns, not causes. Growing-season flags = crop vulnerability; winter/off-season flags are separate."
         ],
         "risks_for_local_review": [
-          "Check local seed availability and herbicide carryover",
-          "Confirm planting windows with a local agronomist",
+          "Check machinery and labour needs for this rotation locally",
+          "Confirm seed availability in your area",
+          "Check local prices and buyers before changing crops",
+          "Review pest and herbicide carryover with a local adviser",
           "Crop parameter values need local expert review"
         ],
-        "confidence": "medium"
+        "confidence": "medium",
+        "tier": "worth_considering",
+        "tier_label": "\u25c7 Worth considering",
+        "tier_reason": "Passes your farm constraints; review evidence before changing.",
+        "unsuitable_reasons": [],
+        "soft_notes": []
       }
     ]
   },

@@ -5,7 +5,11 @@ from __future__ import annotations
 from typing import Any
 
 from fieldshift.engine.crops import crop_by_id
-from fieldshift.engine.scoring import grace_groundwater_penalty
+from fieldshift.engine.inputs_config import (
+    SOIL_INFILTRATION_MM_H,
+    STANDARD_LOCAL_RISKS,
+)
+from fieldshift.engine.scoring import grace_groundwater_penalty, score_pest_break
 from fieldshift.models import EvidenceItem, ScoreSet
 
 
@@ -19,7 +23,6 @@ def _data_through_for(
             var = str(row.get("variable") or "")
             if key in var and row.get("data_through"):
                 return str(row["data_through"])
-    # Fall back to rain_best period end
     period = (features.get("rain") or {}).get("period")
     if period and "→" in str(period):
         end = str(period).split("→")[-1].strip()
@@ -32,12 +35,60 @@ def _data_through_for(
     return None
 
 
+def _pest_benefit_lines(sequence: list[str]) -> list[str]:
+    """Benefit lines when consecutive crops are from different families."""
+    if len(sequence) < 2:
+        return []
+    lines: list[str] = []
+    for a, b in zip(sequence, sequence[1:], strict=False):
+        ca, cb = crop_by_id(a), crop_by_id(b)
+        if ca["family"] != cb["family"]:
+            lines.append(
+                f"Breaks the cycle of {ca['name'].lower()} pests "
+                f"(different crop family: {cb['family']})"
+            )
+    # Keep pest-break calculation alive for the benefit signal.
+    _ = score_pest_break(sequence)
+    return lines[:2]
+
+
+def _infiltration_benefit(sequence: list[str], soil_category: str) -> list[str]:
+    """Cover / deep roots — stronger wording on clay and silty soils."""
+    has_cover = any(crop_by_id(c)["type"] == "cover" for c in sequence)
+    deep = any(crop_by_id(c).get("root_depth") == "deep" for c in sequence)
+    if not (has_cover or deep):
+        return []
+    infil = SOIL_INFILTRATION_MM_H.get(soil_category, 13.0)
+    if soil_category in ("clay", "silty"):
+        return [
+            "Cover or deep roots can improve infiltration on "
+            f"{soil_category} soil (typical rate ≈ {infil:.1f} mm/h)"
+        ]
+    return ["Cover or deep roots can help water soak in between rains"]
+
+
+def _supplemental_income_benefit(sequence: list[str]) -> list[str]:
+    forage = [
+        crop_by_id(c)
+        for c in sequence
+        if float(crop_by_id(c).get("forage_value") or 0) >= 0.5
+        or crop_by_id(c)["type"] in ("cover", "forage")
+    ]
+    if not forage:
+        return []
+    names = ", ".join(c["name"] for c in forage[:2])
+    return [f"Supplemental income or feed value possible from {names}"]
+
+
 def explain_strategy(
     strategy: dict[str, Any],
     features: dict[str, Any],
     scores: ScoreSet,
     *,
     anomalies: dict[str, Any] | None = None,
+    baseline_scores: ScoreSet | None = None,
+    soil_category: str = "loamy",
+    extra_data_gaps: list[str] | None = None,
 ) -> dict[str, Any]:
     bare = features.get("bare_months", {})
     rain = features.get("rain", {})
@@ -58,7 +109,7 @@ def explain_strategy(
         why_bits.append("A cover crop is included to protect soil in the off-season.")
     if not why_bits:
         why_bits.append(
-            f"Scores favour this rotation for local water, soil, and climate margins "
+            f"Scores favour this rotation for the goals you marked as important "
             f"(total={scores.total:.2f})."
         )
     why = " ".join(why_bits[:2])
@@ -162,19 +213,21 @@ def explain_strategy(
             EvidenceItem(text="Limited field evidence available", source="data coverage")
         )
 
-    benefits = []
+    # Benefits (not rated): pest, infiltration, supplemental income, reduced water demand
+    benefits: list[str] = []
+    benefits.extend(_pest_benefit_lines(seq))
+    benefits.extend(_infiltration_benefit(seq, soil_category))
+    benefits.extend(_supplemental_income_benefit(seq))
+    if baseline_scores is not None and scores.water > baseline_scores.water + 0.02:
+        benefits.append("Lower water demand than your current rotation")
     if any(crop_by_id(c)["nitrogen_fixing"] for c in seq):
-        benefits.append("Includes a nitrogen-fixing crop")
-    if any(crop_by_id(c)["type"] == "cover" for c in seq):
-        benefits.append("Winter/off-season ground cover")
-    if len({crop_by_id(c)["family"] for c in seq}) >= 2:
-        benefits.append("More than one plant family in the rotation")
-    if scores.water >= 0.65:
-        benefits.append("Water demand aligns with local rainfall")
+        benefits.append("Adds nitrogen naturally via a legume")
     if not benefits:
-        benefits.append("Maintains familiar cash-crop economics")
+        benefits.append("Keeps familiar cash-crop options for your seasons")
 
     data_gaps = list(features.get("feature_data_gaps") or [])
+    if extra_data_gaps:
+        data_gaps.extend(extra_data_gaps)
     cov = features.get("data_coverage", {}).get("per_variable") or []
     for row in cov:
         if row.get("n_gaps", 0) > 0 and row.get("variable") in {
@@ -191,14 +244,9 @@ def explain_strategy(
     if not data_gaps:
         data_gaps.append("GAEZ suitability and US SSURGO modules not applied yet")
 
-    risks = [
-        "Check local seed availability and herbicide carryover",
-        "Confirm planting windows with a local agronomist",
-    ]
+    risks = list(STANDARD_LOCAL_RISKS)
     if any(crop_by_id(c).get("needs_expert_review") for c in seq):
         risks.append("Crop parameter values need local expert review")
-    if "cotton" in seq or "rice" in seq:
-        risks.append("Crop may be poorly adapted — double-check climate filter")
 
     return {
         "why": why,

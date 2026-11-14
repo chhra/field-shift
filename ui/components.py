@@ -135,11 +135,11 @@ def weights_bar(weights: dict[str, float]) -> None:
 
     labels = {
         "water": "Water",
-        "soil_health": "Soil",
+        "forage": "Forage",
+        "nitrogen": "Nitrogen",
         "erosion": "Erosion",
-        "pest_break": "Pest",
-        "climate_fit": "Climate",
-        "income": "Income",
+        "organic_matter": "Organic matter",
+        "market": "Market",
     }
     keys = list(weights.keys())
     fig = go.Figure(
@@ -156,7 +156,7 @@ def weights_bar(weights: dict[str, float]) -> None:
     fig.update_layout(
         height=170,
         margin={"l": 70, "r": 36, "t": 8, "b": 8},
-        xaxis={"range": [0, 2.35], "title": None, "gridcolor": SIDEBAR},
+        xaxis={"range": [0, 1.15], "title": None, "gridcolor": SIDEBAR},
         yaxis={"autorange": "reversed"},
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
@@ -173,7 +173,7 @@ def weights_bar(weights: dict[str, float]) -> None:
 def demo_field_cards(
     cards: list[dict[str, Any]],
 ) -> str | None:
-    """Render demo field cards with one thin border each; return clicked id.
+    """Render flat demo field columns (no boxes); return clicked id.
 
     Each card dict: id, name, climate, country, rotation, thumb_path.
     """
@@ -181,39 +181,34 @@ def demo_field_cards(
         return None
 
     clicked: str | None = None
-    cols = st.columns(len(cards), gap="medium")
+    cols = st.columns(len(cards), gap="large")
     for col, card in zip(cols, cards, strict=True):
         with col:
-            with st.container(border=True):
+            thumb = card.get("thumb_path")
+            if thumb:
+                st.image(thumb, use_container_width=True)
+            else:
                 st.markdown(
-                    '<div class="fs-demo-bordered" aria-hidden="true"></div>',
+                    '<div class="fs-demo-thumb-empty"></div>',
                     unsafe_allow_html=True,
                 )
-                thumb = card.get("thumb_path")
-                if thumb:
-                    st.image(thumb, use_container_width=True)
-                else:
-                    st.markdown(
-                        '<div class="fs-demo-thumb-empty"></div>',
-                        unsafe_allow_html=True,
-                    )
-                st.markdown(
-                    f"""
+            st.markdown(
+                f"""
 <div class="fs-demo-copy">
   <p class="fs-demo-card-title">{card["name"]}</p>
   <p class="fs-demo-card-meta">{card["climate"]} · {card["country"]}</p>
   <p class="fs-demo-card-rot">Rotation · {card["rotation"]}</p>
 </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
-                if st.button(
-                    "Open field report",
-                    key=f"demo-{card['id']}",
-                    use_container_width=True,
-                    type="primary",
-                ):
-                    clicked = card["id"]
+                """,
+                unsafe_allow_html=True,
+            )
+            if st.button(
+                "Open field report",
+                key=f"demo-{card['id']}",
+                use_container_width=True,
+                type="primary",
+            ):
+                clicked = card["id"]
     return clicked
 
 

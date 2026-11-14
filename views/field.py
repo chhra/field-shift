@@ -7,7 +7,23 @@ from pathlib import Path
 
 import streamlit as st
 from fieldshift.cache import read_json
-from fieldshift.engine.crops import crop_by_id
+from fieldshift.engine.inputs_config import (
+    DEMO_FARM_ANSWERS,
+    GOAL_HINTS,
+    GOAL_KEYS,
+    GOAL_LABELS,
+    IMPORTANCE_LABELS,
+    MONTH_SHIFT_DATA_GAP_THRESHOLD,
+    SOIL_HELP,
+    SOIL_HINT,
+    SOIL_LABELS,
+    WATER_HELP,
+    WATER_HINT,
+    WATER_LABELS,
+    normalize_goal_weights,
+    resolve_soil_category,
+    resolve_water_access,
+)
 from fieldshift.engine.slots import (
     crops_for_slot,
     default_rotation_for_slots,
@@ -15,8 +31,8 @@ from fieldshift.engine.slots import (
 )
 from fieldshift.engine.tiers import recommendation_sentence
 from fieldshift.models import (
-    FarmConstraints,
     FieldConditions,
+    GoalImportanceSet,
     PriorityWeights,
     ScenarioParams,
     StrategyRequest,
@@ -39,7 +55,7 @@ from ui.components import (
     section,
     weights_bar,
 )
-from ui.explainers import CRITERION_HELP, FACT_HELP, chart_how_to_read
+from ui.explainers import FACT_HELP, chart_how_to_read
 from ui.map import field_map
 from ui.mock_banner import show_mock_banner
 from ui.source_caption import source_caption
@@ -131,21 +147,9 @@ if (
         _DEFAULT_ROTATION.get(field_id, ["maize", "soybean"])
     )
     st.session_state["_rotation_field"] = field_id
-st.session_state.setdefault("soil_type", "loam")
-st.session_state.setdefault("water_access", _DEFAULT_WATER.get(field_id, "rainfed"))
-st.session_state.setdefault("irrigations_per_season", 0)
-st.session_state.setdefault("nitrogen", "unknown")
-st.session_state.setdefault("livestock", False)
-st.session_state.setdefault("labor", "normal")
-st.session_state.setdefault("budget_new_seed", "normal")
-st.session_state.setdefault("has_small_grain_harvest", None)
-st.session_state.setdefault("has_hay_forage_equipment", None)
-st.session_state.setdefault("has_row_crop_planter", None)
-st.session_state.setdefault("market_access", {})
-# Multi-crop same-season rotations (e.g. maize→soy) need a 2-year cycle of slots
-if st.session_state.get("_cycle_field") != field_id:
-    st.session_state["cycle_years"] = _DEFAULT_CYCLE.get(field_id, 1)
-    st.session_state["_cycle_field"] = field_id
+_demo0 = DEMO_FARM_ANSWERS.get(field_id) or DEMO_FARM_ANSWERS["iowa"]
+st.session_state.setdefault("water_category", _demo0["water_category"])
+st.session_state.setdefault("soil_category", _demo0["soil_category"])
 st.session_state.setdefault("rain_mult", 1.0)
 st.session_state.setdefault("temp_offset", 0.0)
 
@@ -303,16 +307,11 @@ _chart = (
     if field_id == "custom"
     else _cached_demo_conditions_figure(field_id)
 )
-with st.container(border=True):
-    st.markdown(
-        '<div class="fs-chart-wrap" aria-hidden="true"></div>',
-        unsafe_allow_html=True,
-    )
-    st.plotly_chart(
-        _chart,
-        use_container_width=True,
-        config={"displayModeBar": False},
-    )
+st.plotly_chart(
+    _chart,
+    use_container_width=True,
+    config={"displayModeBar": False},
+)
 st.caption(
     "Plant greenness (line) · Rain mm (bars) · Water balance (dashed). "
     "Tan shade ≈ usually bare · light red ≈ growing-season stress."
@@ -343,9 +342,19 @@ with st.expander("Stress & anomalies (SI model)"):
 # --- 3. About your farm ---
 section(
     "About your farm",
-    "Build your rotation from satellite seasons, then set farm inputs and priorities.",
+    "Five inputs only — satellites pre-fill seasons; you confirm water, soil, and goals.",
     step=3,
 )
+
+
+demo_answers = DEMO_FARM_ANSWERS.get(field_id) or DEMO_FARM_ANSWERS["iowa"]
+if st.session_state.get("_farm_inputs_field") != field_id:
+    st.session_state["_farm_inputs_field"] = field_id
+    st.session_state["water_category"] = demo_answers["water_category"]
+    st.session_state["soil_category"] = demo_answers["soil_category"]
+    for gk, gv in demo_answers["goals"].items():
+        st.session_state[f"goal-{gk}"] = int(gv)
+    st.caption(f"Pre-filled: {demo_answers['label']}")
 
 try:
     engine_feats = load_field_features(
@@ -354,87 +363,74 @@ try:
 except FileNotFoundError:
     engine_feats = {}
 
-st.markdown("**Rotation builder**")
+st.markdown("**1 · Your field**")
+st.caption("Drawn on the map above, or opened from a demo field on Home.")
+
+st.markdown("**2 · What you grow now**")
 st.caption(
-    "Season slots come from detected NDVI seasons (1–2 per year). "
-    "Up to 4 cash crops per cycle; optional cover in each bare window. "
-    "Crops that fail climate fit for a slot are disabled (see reason)."
+    "One crop per detected season slot. Planting and harvest months are "
+    "detected from satellite — change only if wrong."
 )
-st.session_state["cycle_years"] = st.selectbox(
+st.session_state["cycle_years"] = st.radio(
     "Rotation cycle length (years)",
     [1, 2],
     index=[1, 2].index(int(st.session_state.get("cycle_years", 1))),
-    help="Repeat satellite seasons across years so you can place up to 4 cash crops.",
+    horizontal=True,
     key=f"cycle-{field_id}",
+    help="Example: maize→soybean in one summer needs a 2-year cycle so both fit.",
 )
 slots = rotation_slots_from_features(
     engine_feats,
     max_cash=4,
     cycle_years=int(st.session_state["cycle_years"]),
 )
-preferred = list(st.session_state["current_rotation"])
-if not preferred:
-    preferred = list(_DEFAULT_ROTATION.get(field_id, ["maize", "soybean"]))
-
+preferred = list(st.session_state["current_rotation"]) or list(
+    _DEFAULT_ROTATION.get(field_id, ["maize", "soybean"])
+)
 cash_slots = [s for s in slots if s.get("kind") == "cash"]
 cover_slots = [s for s in slots if s.get("kind") == "cover"]
 default_cash = default_rotation_for_slots(slots, preferred)
-# Keep any covers already in preferred
-prev_covers = [
-    c
-    for c in preferred
-    if c not in default_cash
-]
-
+prev_covers = [c for c in preferred if c not in default_cash]
 new_rot: list[str] = []
-slot_cols = st.columns(max(1, min(4, len(cash_slots) + len(cover_slots))))
+plant_overrides: dict[str, int] = {}
+harvest_overrides: dict[str, int] = {}
+month_gaps: list[str] = []
 all_slots = cash_slots + cover_slots
+slot_cols = st.columns(max(1, min(4, len(all_slots) or 1)))
 for i, slot in enumerate(all_slots):
     with slot_cols[i % len(slot_cols)]:
-        options = crops_for_slot(
-            slot, engine_feats, always_allow=preferred
-        )
+        options = crops_for_slot(slot, engine_feats, always_allow=preferred)
         enabled = [o for o in options if o["enabled"]]
         disabled_ids = {o["id"] for o in options if not o["enabled"]}
-        reason_by_id = {o["id"]: o["reason"] for o in options}
         labels = {
-            o["id"]: (
-                o["name"]
-                if o["enabled"]
-                else f"{o['name']} — {o['reason']}"
-            )
+            o["id"]: (o["name"] if o["enabled"] else f"{o['name']} — {o['reason']}")
             for o in options
         }
+        months = list(slot.get("months") or [])
+        det_plant = int(months[0]) if months else 5
+        det_harvest = int(months[-1]) if months else 10
         if slot.get("kind") == "cover":
             choices = ["(none)"] + [o["id"] for o in options]
             default_cover = next(
                 (c for c in prev_covers if c in {o["id"] for o in enabled}),
                 "(none)",
             )
-            _labels = dict(labels)
-
-            def _fmt_cover(x: str, _l: dict[str, str] = _labels) -> str:
-                return "No cover crop" if x == "(none)" else _l.get(x, x)
-
             pick = st.selectbox(
                 f"{slot['label']}",
                 choices,
-                index=choices.index(default_cover)
-                if default_cover in choices
-                else 0,
-                format_func=_fmt_cover,
+                index=choices.index(default_cover) if default_cover in choices else 0,
+                format_func=lambda x, _l=labels: (
+                    "No cover crop" if x == "(none)" else _l.get(x, x)
+                ),
                 key=f"slot-{field_id}-{slot['id']}",
-                help="Optional cover in the bare / fallow window.",
+                help="Optional cover in the bare window.",
             )
             if pick != "(none)" and pick not in disabled_ids:
                 new_rot.append(pick)
-            elif pick != "(none)" and pick in disabled_ids:
-                st.caption(f"Unavailable: {reason_by_id.get(pick, '')}")
         else:
             enabled_ids = [o["id"] for o in enabled] or [
                 default_cash[min(i, len(default_cash) - 1)]
             ]
-            # Prefer matching preferred crop for this cash index
             cash_idx = sum(1 for s in all_slots[:i] if s.get("kind") == "cash")
             pref = (
                 default_cash[cash_idx]
@@ -443,316 +439,178 @@ for i, slot in enumerate(all_slots):
             )
             if pref not in enabled_ids:
                 pref = enabled_ids[0]
-            _labels_cash = dict(labels)
-
-            def _fmt_cash(x: str, _l: dict[str, str] = _labels_cash) -> str:
-                return _l.get(x, x)
-
             pick = st.selectbox(
                 f"{slot['label']}",
                 enabled_ids + sorted(disabled_ids),
                 index=enabled_ids.index(pref),
-                format_func=_fmt_cash,
+                format_func=lambda x, _l=labels: _l.get(x, x),
                 key=f"slot-{field_id}-{slot['id']}",
             )
             if pick in disabled_ids:
-                st.caption(f"Unavailable: {reason_by_id.get(pick, '')}")
                 pick = pref
             new_rot.append(pick)
+
+        st.caption("Detected from satellite — change if wrong")
+        m1, m2 = st.columns(2)
+        with m1:
+            plant = st.selectbox(
+                "Planting month",
+                list(range(1, 13)),
+                index=det_plant - 1,
+                format_func=lambda m: _MONTHS[m - 1],
+                key=f"plant-{field_id}-{slot['id']}",
+                help="Example: if satellites show May but you plant in April, change it.",
+            )
+        with m2:
+            harvest = st.selectbox(
+                "Harvest month",
+                list(range(1, 13)),
+                index=det_harvest - 1,
+                format_func=lambda m: _MONTHS[m - 1],
+                key=f"harvest-{field_id}-{slot['id']}",
+                help="Example: if you harvest in September instead of October, change it.",
+            )
+        if abs(int(plant) - det_plant) > MONTH_SHIFT_DATA_GAP_THRESHOLD:
+            month_gaps.append(
+                f"Planting month for {slot['label']} moved >"
+                f"{MONTH_SHIFT_DATA_GAP_THRESHOLD} month from satellite detection"
+            )
+            if new_rot:
+                plant_overrides[new_rot[-1]] = int(plant)
+        if abs(int(harvest) - det_harvest) > MONTH_SHIFT_DATA_GAP_THRESHOLD:
+            month_gaps.append(
+                f"Harvest month for {slot['label']} moved >"
+                f"{MONTH_SHIFT_DATA_GAP_THRESHOLD} month from satellite detection"
+            )
+            if new_rot:
+                harvest_overrides[new_rot[-1]] = int(harvest)
 
 if not new_rot:
     new_rot = list(default_cash)
 st.session_state["current_rotation"] = new_rot
 
-_soil_labels = {
-    "sand": "Sandy",
-    "loam": "Loam (mixed)",
-    "clay": "Clay",
-    "silt": "Silt",
-    "unknown": "Not sure",
-}
-st.session_state["soil_type"] = st.selectbox(
+st.markdown("**3 · Where your water comes from**")
+st.caption(WATER_HINT)
+water_keys = list(WATER_LABELS.keys())
+st.session_state["water_category"] = st.radio(
+    "Water source",
+    water_keys,
+    index=water_keys.index(st.session_state.get("water_category", "rain_only")),
+    format_func=lambda k: WATER_LABELS[k],
+    horizontal=True,
+    key=f"water-cat-{field_id}",
+    help=WATER_HELP,
+    label_visibility="collapsed",
+)
+
+st.markdown("**4 · Your soil type**")
+st.caption(SOIL_HINT)
+soil_keys = list(SOIL_LABELS.keys())
+st.session_state["soil_category"] = st.radio(
     "Soil type",
-    ["sand", "loam", "clay", "silt", "unknown"],
-    index=["sand", "loam", "clay", "silt", "unknown"].index(
-        st.session_state["soil_type"]
-    ),
-    format_func=lambda x, _l=_soil_labels: _l[x],
-    help="Rough texture is enough. Used lightly for climate/soil context — "
-    "not a lab soil test.",
+    soil_keys,
+    index=soil_keys.index(st.session_state.get("soil_category", "loamy")),
+    format_func=lambda k: SOIL_LABELS[k],
+    horizontal=True,
+    key=f"soil-cat-{field_id}",
+    help=SOIL_HELP,
+    label_visibility="collapsed",
 )
 
-st.markdown("**What you have on the farm**")
+st.markdown("**5 · What matters to you**")
 st.caption(
-    "Optional. Skip any field you are unsure about — we will not block options "
-    "for blanks. Answers here filter or gently adjust recommendations; they do "
-    "not change your priority sliders below."
+    "Each goal: Not important / Important / Very important. "
+    "Weights are share of the total — changes apply immediately."
 )
-c1, c2, c3 = st.columns(3)
-with c1:
-    water_label = {
-        "rainfed": "Rain-fed only (no irrigation)",
-        "limited": "Some irrigation available",
-        "irrigated": "Fully irrigated",
-    }
-    st.session_state["water_access"] = st.radio(
-        "How do you water this field?",
-        ["rainfed", "limited", "irrigated"],
-        index=["rainfed", "limited", "irrigated"].index(
-            st.session_state["water_access"]
-        ),
-        format_func=lambda x: water_label[x],
-        help="Used in the water score. Rain-fed relies only on rainfall from satellites.",
-    )
-    if st.session_state["water_access"] in ("limited", "irrigated"):
-        st.session_state["irrigations_per_season"] = int(
-            st.number_input(
-                "Typical irrigations per growing season",
-                min_value=0,
-                max_value=20,
-                value=int(st.session_state.get("irrigations_per_season", 0)),
-                help="Rough count is fine. Each watering adds a small, capped lift "
-                "to the water score.",
-                key=f"irr-n-{field_id}",
-            )
+goal_importance: dict[str, int] = {}
+gcols = st.columns(2)
+for i, gk in enumerate(GOAL_KEYS):
+    with gcols[i % 2]:
+        goal_importance[gk] = st.radio(
+            GOAL_LABELS[gk],
+            [0, 1, 2],
+            index=[0, 1, 2].index(int(st.session_state.get(f"goal-{gk}", 1))),
+            format_func=lambda v: IMPORTANCE_LABELS[int(v)],
+            horizontal=True,
+            key=f"goal-{field_id}-{gk}",
+            help=GOAL_HINTS[gk],
         )
-    else:
-        st.session_state["irrigations_per_season"] = 0
-    _n_labels = {
-        "unknown": "Not sure / prefer not to say",
-        "low": "Low — little synthetic N",
-        "medium": "Medium — typical for the area",
-        "high": "High — heavy N fertilizer",
-    }
-    st.session_state["nitrogen"] = st.selectbox(
-        "Nitrogen fertilizer on this field",
-        ["unknown", "low", "medium", "high"],
-        index=["unknown", "low", "medium", "high"].index(
-            st.session_state.get("nitrogen", "unknown")
-        ),
-        format_func=lambda x, _l=_n_labels: _l[x],
-        help="If a rotation includes a nitrogen-fixing crop (legume), we note that "
-        "it may cut N need for the next crop, and give a small soil-health bonus "
-        "(larger when your current N use is high).",
-        key=f"n-{field_id}",
-    )
-    st.session_state["livestock"] = st.checkbox(
-        "I keep livestock that can eat forage",
-        value=st.session_state["livestock"],
-        help="If yes, cover crops and forage legumes can count as feed income — "
-        "not only as soil cover.",
-        key=f"live-{field_id}",
-    )
-with c2:
-    st.markdown("**Equipment you can use**")
-    st.caption("Leave unchecked if you are not sure — we will not exclude options.")
-    sg = st.checkbox(
-        "Can harvest small grains (wheat, rye, …)",
-        value=st.session_state.get("has_small_grain_harvest") is True,
-        key=f"mach-sg-{field_id}",
-    )
-    hay = st.checkbox(
-        "Can make hay or manage forage",
-        value=st.session_state.get("has_hay_forage_equipment") is True,
-        key=f"mach-hay-{field_id}",
-    )
-    rowp = st.checkbox(
-        "Can plant row crops (maize, soy, …)",
-        value=st.session_state.get("has_row_crop_planter") is True,
-        key=f"mach-row-{field_id}",
-    )
-    # Tri-state: unchecked after never set stays None (don't know) via "I know my kit"
-    know_kit = st.checkbox(
-        "Use my answers above as hard limits",
-        value=st.session_state.get("know_kit", False),
-        key=f"know-kit-{field_id}",
-        help="Turn this on only when you are sure. Then unchecked boxes mean "
-        "you cannot run that crop type — those options are marked Not suitable.",
-    )
-    st.session_state["know_kit"] = know_kit
-    if know_kit:
-        st.session_state["has_small_grain_harvest"] = bool(sg)
-        st.session_state["has_hay_forage_equipment"] = bool(hay)
-        st.session_state["has_row_crop_planter"] = bool(rowp)
-    else:
-        st.session_state["has_small_grain_harvest"] = None
-        st.session_state["has_hay_forage_equipment"] = None
-        st.session_state["has_row_crop_planter"] = None
-with c3:
-    _labor_labels = {
-        "low": "Tight — hard to take on extra field work",
-        "normal": "Typical — manage a normal season",
-        "high": "Flexible — can take on more management",
-    }
-    st.session_state["labor"] = st.selectbox(
-        "People available for field work",
-        ["low", "normal", "high"],
-        index=["low", "normal", "high"].index(
-            st.session_state.get("labor", "normal")
-        ),
-        format_func=lambda x, _l=_labor_labels: _l[x],
-        help="Tight labor slightly lowers scores for rotations that add cover crops "
-        "(extra planting/termination work). It does not hide those options.",
-        key=f"labor-{field_id}",
-    )
-    _budget_labels = {
-        "low": "Tight — prefer not to buy new seed now",
-        "normal": "OK — can buy seed if the benefit is clear",
-    }
-    st.session_state["budget_new_seed"] = st.selectbox(
-        "Money for new seed this year",
-        ["low", "normal"],
-        index=["low", "normal"].index(
-            st.session_state.get("budget_new_seed", "normal")
-        ),
-        format_func=lambda x, _l=_budget_labels: _l[x],
-        help="Tight budget slightly lowers scores when a strategy adds cover-crop "
-        "seed. It does not remove the option — you still see it with the reason.",
-        key=f"budget-{field_id}",
-    )
-    st.markdown("**Can you sell each crop?**")
-    st.caption(
-        "One answer per crop in your rotation. “Not sure” keeps income at the "
-        "default estimate."
-    )
-    market: dict[str, str] = dict(st.session_state.get("market_access") or {})
-    # Unique crop ids (multi-year cycles can repeat the same cash crop).
-    _mkt_labels = {
-        "unknown": "Not sure yet",
-        "buyer": "Yes — I already have a buyer",
-        "no_market": "No — hard to sell locally",
-    }
-    for cid in dict.fromkeys(c for c in new_rot if c and c != "(none)"):
-        try:
-            crop_name = crop_by_id(cid)["name"]
-        except KeyError:
-            crop_name = cid.replace("_", " ").title()
+        st.caption(GOAL_HINTS[gk])
 
-        def _fmt_mkt(x: str, _l: dict[str, str] = _mkt_labels) -> str:
-            return _l.get(x, x)
+weights_map, equal_note = normalize_goal_weights(goal_importance)
+if equal_note:
+    st.info(equal_note)
+weights_bar(weights_map)
 
-        market[cid] = st.selectbox(
-            f"Selling {crop_name}",
-            ["unknown", "buyer", "no_market"],
-            index=["unknown", "buyer", "no_market"].index(
-                market.get(cid, "unknown")
-            ),
-            format_func=_fmt_mkt,
-            key=f"mkt-{field_id}-{cid}",
-            help="Yes (buyer): raises the relative income score. "
-            "No (hard to sell): cash crops are marked Not suitable. "
-            "Cover/forage kept for on-farm use can still be suitable.",
-        )
-    st.session_state["market_access"] = market
+water_access, water_gaps = resolve_water_access(st.session_state["water_category"])
+soil_type, _awc, _inf, soil_gaps = resolve_soil_category(
+    st.session_state["soil_category"]
+)
+input_gaps = water_gaps + soil_gaps + month_gaps
+if field_id in DEMO_FARM_ANSWERS:
+    input_gaps.append(DEMO_FARM_ANSWERS[field_id]["label"])
+input_penalty = bool(water_gaps or soil_gaps)
 
-# --- 4 + 5 Priorities, climate what-if, then options (fragment for snappy sliders) ---
+# --- 4 climate + 5 options ---
 def _options_block() -> None:
-    st.markdown("**What matters most to you**")
-    st.caption(
-        "These sliders set how we rank options (0 = ignore, 1 = equal weight, "
-        "2 = twice as important). Farm facts above only filter or gently adjust "
-        "scores — they never change these weights."
-    )
-    w_meta = [
-        ("water", "Water"),
-        ("soil_health", "Soil health"),
-        ("erosion", "Erosion"),
-        ("pest_break", "Pest break"),
-        ("climate_fit", "Climate fit"),
-        ("income", "Income"),
-    ]
-    w_cols = st.columns(3)
-    weights: dict[str, float] = {}
-    for i, (key, label) in enumerate(w_meta):
-        with w_cols[i % 3]:
-            help_txt = CRITERION_HELP.get(key, {}).get("detail", "")
-            if key == "income":
-                help_txt = (
-                    "Relative income: typical price tier × yield potential, "
-                    "adjusted for market access (buyer lift). Not a farm budget. "
-                    + help_txt
-                )
-            weights[key] = st.slider(
-                label,
-                0.0,
-                2.0,
-                1.0,
-                0.1,
-                key=f"w-{field_id}-{key}",
-                help=help_txt,
-            )
-    weights_bar(weights)
-
-    # Climate first so scenario is set before reading the scored options.
     section(
         "What if the climate shifts?",
-        "Set a scenario first — options below re-score from cached features only "
-        "(no Earth Engine re-extract).",
+        "Optional scenario — options below re-score from cached features only.",
         step=4,
     )
+    rain_opts = [("Drier (−20%)", 0.8), ("Today", 1.0), ("Wetter (+20%)", 1.2)]
+    temp_opts = [("Today", 0.0), ("+1 °C", 1.0), ("+2 °C", 2.0)]
+    rain_labels = [r[0] for r in rain_opts]
+    temp_labels = [t[0] for t in temp_opts]
     c_rain, c_temp = st.columns(2)
     with c_rain:
-        st.session_state["rain_mult"] = st.slider(
-            "Rainfall change (multiplier)",
-            0.7,
-            1.3,
-            float(st.session_state["rain_mult"]),
-            0.05,
-            key=f"rain-{field_id}",
-            help="1.0 = today’s rainfall. 0.8 ≈ 20% drier years; 1.2 ≈ 20% wetter.",
+        rain_pick = st.radio(
+            "Rainfall",
+            rain_labels,
+            index=1,
+            horizontal=True,
+            key=f"rain-cat-{field_id}",
+            help="Example: Drier means about 20% less rain than today.",
         )
+        st.session_state["rain_mult"] = dict(rain_opts)[rain_pick]
     with c_temp:
-        st.session_state["temp_offset"] = st.slider(
-            "Temperature offset (°C)",
-            0.0,
-            3.0,
-            float(st.session_state["temp_offset"]),
-            0.5,
-            key=f"temp-{field_id}",
-            help="Extra warming on top of today’s climate (e.g. +2 °C warmer seasons).",
+        temp_pick = st.radio(
+            "Temperature",
+            temp_labels,
+            index=0,
+            horizontal=True,
+            key=f"temp-cat-{field_id}",
+            help="Example: +2 °C means warmer seasons on top of today’s climate.",
         )
+        st.session_state["temp_offset"] = dict(temp_opts)[temp_pick]
 
     climate_shifted = (
         abs(float(st.session_state["rain_mult"]) - 1.0) > 1e-6
         or float(st.session_state["temp_offset"]) > 1e-6
     )
-    if climate_shifted:
-        st.caption(
-            f"Scenario applied below: rain ×{st.session_state['rain_mult']:.2f}, "
-            f"temp +{st.session_state['temp_offset']:.1f} °C"
-        )
 
     section(
         "Your options",
-        "Tiered cards: Best fit · Worth considering · Your rotation · Not suitable. "
-        "Updates when you change priorities, constraints, or climate sliders.",
+        "Side-by-side comparison with the same six goal scores on every option.",
         step=5,
-    )
-    cons = FarmConstraints(
-        has_small_grain_harvest=st.session_state.get("has_small_grain_harvest"),
-        has_hay_forage_equipment=st.session_state.get(
-            "has_hay_forage_equipment"
-        ),
-        has_row_crop_planter=st.session_state.get("has_row_crop_planter"),
-        labor=st.session_state.get("labor", "normal"),
-        budget_new_seed=st.session_state.get("budget_new_seed", "normal"),
-        market_access=dict(st.session_state.get("market_access") or {}),
     )
     req = StrategyRequest(
         current_rotation=st.session_state["current_rotation"],
-        soil_type=st.session_state["soil_type"],
-        water_access=st.session_state["water_access"],
-        irrigations_per_season=int(
-            st.session_state.get("irrigations_per_season", 0)
-        ),
-        nitrogen=st.session_state.get("nitrogen", "unknown"),
-        livestock=st.session_state["livestock"],
-        weights=PriorityWeights(**weights),
-        constraints=cons,
+        water_category=st.session_state["water_category"],
+        soil_category=st.session_state["soil_category"],
+        soil_type=soil_type,  # type: ignore[arg-type]
+        water_access=water_access,  # type: ignore[arg-type]
+        goal_importance=GoalImportanceSet(**goal_importance),
+        weights=PriorityWeights(**weights_map),
         scenario=ScenarioParams(
             rain_mult=float(st.session_state["rain_mult"]),
             temp_offset=float(st.session_state["temp_offset"]),
         ),
+        plant_month_overrides=plant_overrides,
+        harvest_month_overrides=harvest_overrides,
+        input_data_gaps=input_gaps,
+        input_confidence_penalty=input_penalty,
+        equal_weights_note=equal_note,
     )
     result = generate_strategies(field_id, req)
     cards = result.strategies

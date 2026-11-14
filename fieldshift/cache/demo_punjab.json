@@ -509,21 +509,38 @@
       "rice",
       "winter_wheat"
     ],
-    "soil_type": "unknown",
+    "water_category": "fully_irrigated",
+    "soil_category": "loamy",
+    "soil_type": "loam",
     "water_access": "irrigated",
-    "livestock": false,
-    "weights": {
-      "water": 1.0,
-      "soil_health": 1.0,
-      "erosion": 1.0,
-      "pest_break": 1.0,
-      "climate_fit": 1.0,
-      "income": 1.0
+    "goal_importance": {
+      "water": 2,
+      "forage": 1,
+      "nitrogen": 1,
+      "erosion": 1,
+      "organic_matter": 1,
+      "market": 2
     },
+    "weights": {
+      "water": 0.25,
+      "forage": 0.125,
+      "nitrogen": 0.125,
+      "erosion": 0.125,
+      "organic_matter": 0.125,
+      "market": 0.25
+    },
+    "constraints": {},
     "scenario": {
       "rain_mult": 1.0,
       "temp_offset": 0.0
-    }
+    },
+    "plant_month_overrides": {},
+    "harvest_month_overrides": {},
+    "input_data_gaps": [
+      "Demo answers \u2014 Punjab"
+    ],
+    "input_confidence_penalty": false,
+    "equal_weights_note": null
   },
   "default_strategies": {
     "field_id": "punjab",
@@ -534,24 +551,34 @@
         "sequence": [
           {
             "crop_id": "pigeon_pea",
-            "months": "May\u2013Oct"
+            "months": "May\u2013Oct",
+            "plant_month": null,
+            "harvest_month": null
           },
           {
             "crop_id": "winter_wheat",
-            "months": "rabi Nov\u2013Apr"
+            "months": "rabi Nov\u2013Apr",
+            "plant_month": null,
+            "harvest_month": null
           }
         ],
         "scores": {
-          "water": 0.15573320242765273,
-          "soil_health": 0.6733333333333335,
+          "water": 0.2515071964230713,
+          "forage": 0.3,
+          "nitrogen": 0.5,
           "erosion": 0.4639369993999404,
-          "pest_break": 0.6666666666666666,
-          "climate_fit": 0.5570805018277541,
-          "income": 0.6,
-          "total": 0.5194584506092246
+          "organic_matter": 0.7491666666666668,
+          "market": 0.6,
+          "total": 0.4645147573640937
         },
         "delta_vs_current": {
-          "total": 0.1174
+          "water": 0.0786,
+          "forage": 0.125,
+          "nitrogen": 0.5,
+          "erosion": -0.0186,
+          "organic_matter": 0.1063,
+          "market": -0.15,
+          "total": 0.0712
         },
         "why": "May\u2013Jun bare in 10 of 10 years (Sentinel-2 NDVI) Year-to-year rain variability is high (CV=0.37).",
         "evidence": [
@@ -587,46 +614,66 @@
           }
         ],
         "benefits": [
-          "Includes a nitrogen-fixing crop",
-          "More than one plant family in the rotation"
+          "Breaks the cycle of pigeon pea pests (different crop family: poaceae)",
+          "Cover or deep roots can help water soak in between rains",
+          "Lower water demand than your current rotation",
+          "Adds nitrogen naturally via a legume"
         ],
         "data_gaps": [
           "NDVI did not confirm calendar-derived fallow window [7, 10]",
+          "Demo answers \u2014 Punjab",
           "grace_lwe_cm: 43 gap months (data through September 2024)",
           "ndvi_s2: 4 gap months (data through September 2026)",
           "IsolationForest (contamination=0.08, years=11) flags unusual patterns, not causes. Growing-season flags = crop vulnerability; winter/off-season flags are separate."
         ],
         "risks_for_local_review": [
-          "Check local seed availability and herbicide carryover",
-          "Confirm planting windows with a local agronomist",
+          "Check machinery and labour needs for this rotation locally",
+          "Confirm seed availability in your area",
+          "Check local prices and buyers before changing crops",
+          "Review pest and herbicide carryover with a local adviser",
           "Crop parameter values need local expert review"
         ],
-        "confidence": "medium"
+        "confidence": "medium",
+        "tier": "best_fit",
+        "tier_label": "\u2713 Best fit for your priorities",
+        "tier_reason": "Highest overall for your priorities (0.46, +0.07 vs today).",
+        "unsuitable_reasons": [],
+        "soft_notes": []
       },
       {
         "id": "water_wise_swap",
-        "name": "Sorghum \u2192 Winter wheat",
+        "name": "Pigeon pea \u2192 Winter wheat",
         "sequence": [
           {
-            "crop_id": "sorghum",
-            "months": "May\u2013Oct"
+            "crop_id": "pigeon_pea",
+            "months": "May\u2013Oct",
+            "plant_month": null,
+            "harvest_month": null
           },
           {
             "crop_id": "winter_wheat",
-            "months": "rabi Nov\u2013Apr"
+            "months": "rabi Nov\u2013Apr",
+            "plant_month": null,
+            "harvest_month": null
           }
         ],
         "scores": {
-          "water": 0.14219477304329373,
-          "soil_health": 0.5170833333333333,
-          "erosion": 0.4546582594119416,
-          "pest_break": 0.18333333333333332,
-          "climate_fit": 0.5770968287137513,
-          "income": 0.6,
-          "total": 0.4123944213059422
+          "water": 0.2515071964230713,
+          "forage": 0.3,
+          "nitrogen": 0.5,
+          "erosion": 0.4639369993999404,
+          "organic_matter": 0.7491666666666668,
+          "market": 0.6,
+          "total": 0.4645147573640937
         },
         "delta_vs_current": {
-          "total": 0.0103
+          "water": 0.0786,
+          "forage": 0.125,
+          "nitrogen": 0.5,
+          "erosion": -0.0186,
+          "organic_matter": 0.1063,
+          "market": -0.15,
+          "total": 0.0712
         },
         "why": "May\u2013Jun bare in 10 of 10 years (Sentinel-2 NDVI) Year-to-year rain variability is high (CV=0.37).",
         "evidence": [
@@ -662,20 +709,31 @@
           }
         ],
         "benefits": [
-          "Maintains familiar cash-crop economics"
+          "Breaks the cycle of pigeon pea pests (different crop family: poaceae)",
+          "Cover or deep roots can help water soak in between rains",
+          "Lower water demand than your current rotation",
+          "Adds nitrogen naturally via a legume"
         ],
         "data_gaps": [
           "NDVI did not confirm calendar-derived fallow window [7, 10]",
+          "Demo answers \u2014 Punjab",
           "grace_lwe_cm: 43 gap months (data through September 2024)",
           "ndvi_s2: 4 gap months (data through September 2026)",
           "IsolationForest (contamination=0.08, years=11) flags unusual patterns, not causes. Growing-season flags = crop vulnerability; winter/off-season flags are separate."
         ],
         "risks_for_local_review": [
-          "Check local seed availability and herbicide carryover",
-          "Confirm planting windows with a local agronomist",
+          "Check machinery and labour needs for this rotation locally",
+          "Confirm seed availability in your area",
+          "Check local prices and buyers before changing crops",
+          "Review pest and herbicide carryover with a local adviser",
           "Crop parameter values need local expert review"
         ],
-        "confidence": "medium"
+        "confidence": "medium",
+        "tier": "worth_considering",
+        "tier_label": "\u25c7 Worth considering",
+        "tier_reason": "Near the best option, and stronger on water.",
+        "unsuitable_reasons": [],
+        "soft_notes": []
       },
       {
         "id": "current",
@@ -683,23 +741,33 @@
         "sequence": [
           {
             "crop_id": "rice",
-            "months": "kharif Jun\u2013Oct"
+            "months": "kharif Jun\u2013Oct",
+            "plant_month": null,
+            "harvest_month": null
           },
           {
             "crop_id": "winter_wheat",
-            "months": "rabi Nov\u2013Apr"
+            "months": "rabi Nov\u2013Apr",
+            "plant_month": null,
+            "harvest_month": null
           }
         ],
         "scores": {
-          "water": 0.06322073122956687,
-          "soil_health": 0.45208333333333334,
+          "water": 0.17287159590469822,
+          "forage": 0.175,
+          "nitrogen": 0.0,
           "erosion": 0.482494479375938,
-          "pest_break": 0.18333333333333332,
-          "climate_fit": 0.4811818609504322,
-          "income": 0.75,
-          "total": 0.4020522897037673
+          "organic_matter": 0.6429166666666666,
+          "market": 0.75,
+          "total": 0.39326929223150014
         },
         "delta_vs_current": {
+          "water": 0.0,
+          "forage": 0.0,
+          "nitrogen": 0.0,
+          "erosion": 0.0,
+          "organic_matter": 0.0,
+          "market": 0.0,
           "total": 0.0
         },
         "why": "May\u2013Jun bare in 10 of 10 years (Sentinel-2 NDVI) Year-to-year rain variability is high (CV=0.37).",
@@ -736,21 +804,28 @@
           }
         ],
         "benefits": [
-          "Maintains familiar cash-crop economics"
+          "Keeps familiar cash-crop options for your seasons"
         ],
         "data_gaps": [
           "NDVI did not confirm calendar-derived fallow window [7, 10]",
+          "Demo answers \u2014 Punjab",
           "grace_lwe_cm: 43 gap months (data through September 2024)",
           "ndvi_s2: 4 gap months (data through September 2026)",
           "IsolationForest (contamination=0.08, years=11) flags unusual patterns, not causes. Growing-season flags = crop vulnerability; winter/off-season flags are separate."
         ],
         "risks_for_local_review": [
-          "Check local seed availability and herbicide carryover",
-          "Confirm planting windows with a local agronomist",
-          "Crop parameter values need local expert review",
-          "Crop may be poorly adapted \u2014 double-check climate filter"
+          "Check machinery and labour needs for this rotation locally",
+          "Confirm seed availability in your area",
+          "Check local prices and buyers before changing crops",
+          "Review pest and herbicide carryover with a local adviser",
+          "Crop parameter values need local expert review"
         ],
-        "confidence": "medium"
+        "confidence": "medium",
+        "tier": "baseline",
+        "tier_label": "\u25ce Your rotation today",
+        "tier_reason": "This is the rotation you said you grow today.",
+        "unsuitable_reasons": [],
+        "soft_notes": []
       }
     ]
   },

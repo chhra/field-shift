@@ -33,8 +33,17 @@ from fieldshift.data.timelapse import download_s2_gif  # noqa: E402
 from fieldshift.engine.anomalies import detect_anomalies  # noqa: E402
 from fieldshift.engine.features import compute_features  # noqa: E402
 from fieldshift.engine.generate import generate_strategies  # noqa: E402
+from fieldshift.engine.inputs_config import (  # noqa: E402
+    DEMO_FARM_ANSWERS,
+    WATER_ACCESS_MAP,
+    normalize_goal_weights,
+)
 from fieldshift.geo import polygon_centroid  # noqa: E402
-from fieldshift.models import StrategyRequest  # noqa: E402
+from fieldshift.models import (  # noqa: E402
+    GoalImportanceSet,
+    PriorityWeights,
+    StrategyRequest,
+)
 
 DEMOS = {
     "iowa": {
@@ -53,6 +62,22 @@ DEMOS = {
         "size_ha": 40.0,
     },
 }
+
+
+def _demo_request(field_id: str, rotation: list[str]) -> StrategyRequest:
+    demo = DEMO_FARM_ANSWERS[field_id]
+    importance = dict(demo["goals"])
+    weights, note = normalize_goal_weights(importance)
+    return StrategyRequest(
+        current_rotation=list(rotation),
+        water_category=demo["water_category"],
+        soil_category=demo["soil_category"],
+        water_access=WATER_ACCESS_MAP[demo["water_category"]],  # type: ignore[arg-type]
+        goal_importance=GoalImportanceSet(**importance),
+        weights=PriorityWeights(**weights),
+        equal_weights_note=note,
+        input_data_gaps=[demo["label"]],
+    )
 
 
 def _load_fields() -> dict[str, dict]:
@@ -121,10 +146,7 @@ def precompute_one(
     rotation = list(cfg["rotation"])
     feats = compute_features(tidy, daily, current_rotation=rotation)
     anomalies = detect_anomalies(feats)
-    req = StrategyRequest(
-        current_rotation=rotation,
-        water_access=cfg["water_access"],  # type: ignore[arg-type]
-    )
+    req = _demo_request(field_id, rotation)
     strategies = generate_strategies(
         field_id, tidy, req, daily=daily, features=feats
     )

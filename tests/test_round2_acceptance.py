@@ -43,10 +43,19 @@ def test_punjab_fallow_may_jun_and_rice_wheat_seasons() -> None:
 
 def test_punjab_water_wise_beats_current_on_water_and_total() -> None:
     tidy, daily = _load("punjab")
-    weights = PriorityWeights()  # equal weights
+    # Emphasize water so the water-wise swap ranks by the goal that motivates it.
+    weights = PriorityWeights(
+        water=1.0,
+        forage=0.0,
+        nitrogen=0.0,
+        erosion=0.0,
+        organic_matter=0.0,
+        market=0.0,
+    )
     req = StrategyRequest(
         current_rotation=["rice", "winter_wheat"],
         water_access="irrigated",
+        water_category="fully_irrigated",
         weights=weights,
     )
     result = generate_strategies("punjab", tidy, req, daily=daily)
@@ -86,7 +95,7 @@ def test_iowa_cover_still_tops_soil_erosion() -> None:
     feats = compute_features(tidy, daily, current_rotation=["maize", "soybean"])
     current = score_strategy(["maize", "soybean"], feats)
     cover = score_strategy(["maize", "soybean", "cereal_rye_cover"], feats)
-    assert cover.soil_health > current.soil_health
+    assert cover.organic_matter > current.organic_matter
     assert cover.erosion > current.erosion
     cands = build_candidates(["maize", "soybean"], feats)
     ids = {c["id"] for c in cands}

@@ -503,44 +503,159 @@
     "current_rotation": [
       "winter_wheat"
     ],
-    "soil_type": "unknown",
+    "water_category": "rain_only",
+    "soil_category": "clay",
+    "soil_type": "loam",
     "water_access": "rainfed",
-    "livestock": false,
-    "weights": {
-      "water": 1.0,
-      "soil_health": 1.0,
-      "erosion": 1.0,
-      "pest_break": 1.0,
-      "climate_fit": 1.0,
-      "income": 1.0
+    "goal_importance": {
+      "water": 1,
+      "forage": 0,
+      "nitrogen": 1,
+      "erosion": 2,
+      "organic_matter": 1,
+      "market": 1
     },
+    "weights": {
+      "water": 0.16666666666666666,
+      "forage": 0.0,
+      "nitrogen": 0.16666666666666666,
+      "erosion": 0.3333333333333333,
+      "organic_matter": 0.16666666666666666,
+      "market": 0.16666666666666666
+    },
+    "constraints": {},
     "scenario": {
       "rain_mult": 1.0,
       "temp_offset": 0.0
-    }
+    },
+    "plant_month_overrides": {},
+    "harvest_month_overrides": {},
+    "input_data_gaps": [
+      "Demo answers \u2014 Cambridgeshire"
+    ],
+    "input_confidence_penalty": false,
+    "equal_weights_note": null
   },
   "default_strategies": {
     "field_id": "uk",
     "strategies": [
+      {
+        "id": "legume_swap",
+        "name": "Field pea",
+        "sequence": [
+          {
+            "crop_id": "field_pea",
+            "months": "Apr\u2013Aug",
+            "plant_month": null,
+            "harvest_month": null
+          }
+        ],
+        "scores": {
+          "water": 0.5091138258047577,
+          "forage": 0.0,
+          "nitrogen": 1.0,
+          "erosion": 0.4647349348080657,
+          "organic_matter": 0.6675,
+          "market": 0.6,
+          "total": 0.6176806159034814
+        },
+        "delta_vs_current": {
+          "water": -0.4909,
+          "forage": 0.0,
+          "nitrogen": 1.0,
+          "erosion": -0.0558,
+          "organic_matter": -0.0175,
+          "market": 0.0,
+          "total": 0.0633
+        },
+        "why": "Jul\u2013Sep bare in 6 of 10 years (Sentinel-2 NDVI) Year-to-year rain variability is high (CV=0.33).",
+        "evidence": [
+          {
+            "text": "Seasons detected from Sentinel-2 NDVI: winter Oct\u2013Jun (peak 0.76); fallow Jul\u2013Sep",
+            "source": "Sentinel-2 NDVI",
+            "data_through": "September 2026"
+          },
+          {
+            "text": "Jul\u2013Sep bare in 6 of 10 years (Sentinel-2 NDVI)",
+            "source": "Sentinel-2 NDVI",
+            "data_through": "September 2026"
+          },
+          {
+            "text": "Mean annual rain_best \u2248 649 mm (2016-09 \u2192 2026-09)",
+            "source": "rain_best (POWER recent / IMERG long record)",
+            "data_through": "September 2026"
+          },
+          {
+            "text": "-0.5 \u00b1 0.0 cm/yr (2002\u20132024, GRACE/GRACE-FO, deseasonalized)",
+            "source": "GRACE/FO Mascon CRI (deseasonalized)",
+            "data_through": "September 2024"
+          },
+          {
+            "text": "Frost-free period \u2248 235 days",
+            "source": "NASA POWER T2M_MIN",
+            "data_through": "September 2026"
+          },
+          {
+            "text": "Erosion risk index \u2248 0.43 (0\u20131)",
+            "source": "SRTM slope + rain extremes + bare months",
+            "data_through": null
+          },
+          {
+            "text": "Growing-season anomaly: calendar month 1 (1 times)",
+            "source": "IsolationForest SI",
+            "data_through": "September 2026"
+          }
+        ],
+        "benefits": [
+          "Adds nitrogen naturally via a legume"
+        ],
+        "data_gaps": [
+          "Demo answers \u2014 Cambridgeshire",
+          "grace_lwe_cm: 43 gap months (data through September 2024)",
+          "ndvi_s2: 9 gap months (data through September 2026)",
+          "IsolationForest (contamination=0.08, years=11) flags unusual patterns, not causes. Growing-season flags = crop vulnerability; winter/off-season flags are separate."
+        ],
+        "risks_for_local_review": [
+          "Check machinery and labour needs for this rotation locally",
+          "Confirm seed availability in your area",
+          "Check local prices and buyers before changing crops",
+          "Review pest and herbicide carryover with a local adviser",
+          "Crop parameter values need local expert review"
+        ],
+        "confidence": "medium",
+        "tier": "best_fit",
+        "tier_label": "\u2713 Best fit for your priorities",
+        "tier_reason": "Highest overall for your priorities (0.62, +0.06 vs today).",
+        "unsuitable_reasons": [],
+        "soft_notes": []
+      },
       {
         "id": "current",
         "name": "Winter wheat",
         "sequence": [
           {
             "crop_id": "winter_wheat",
-            "months": "winter Oct\u2013Jun"
+            "months": "winter Oct\u2013Jun",
+            "plant_month": null,
+            "harvest_month": null
           }
         ],
         "scores": {
           "water": 1.0,
-          "soil_health": 0.48,
+          "forage": 0.0,
+          "nitrogen": 0.0,
           "erosion": 0.5205031269850335,
-          "pest_break": 0.3333333333333333,
-          "climate_fit": 0.5882482317660063,
-          "income": 0.6,
-          "total": 0.5870141153473954
+          "organic_matter": 0.6849999999999999,
+          "market": 0.6,
+          "total": 0.5543343756616779
         },
         "delta_vs_current": {
+          "water": 0.0,
+          "forage": 0.0,
+          "nitrogen": 0.0,
+          "erosion": 0.0,
+          "organic_matter": 0.0,
+          "market": 0.0,
           "total": 0.0
         },
         "why": "Jul\u2013Sep bare in 6 of 10 years (Sentinel-2 NDVI) Year-to-year rain variability is high (CV=0.33).",
@@ -582,93 +697,27 @@
           }
         ],
         "benefits": [
-          "Water demand aligns with local rainfall"
+          "Keeps familiar cash-crop options for your seasons"
         ],
         "data_gaps": [
+          "Demo answers \u2014 Cambridgeshire",
           "grace_lwe_cm: 43 gap months (data through September 2024)",
           "ndvi_s2: 9 gap months (data through September 2026)",
           "IsolationForest (contamination=0.08, years=11) flags unusual patterns, not causes. Growing-season flags = crop vulnerability; winter/off-season flags are separate."
         ],
         "risks_for_local_review": [
-          "Check local seed availability and herbicide carryover",
-          "Confirm planting windows with a local agronomist",
+          "Check machinery and labour needs for this rotation locally",
+          "Confirm seed availability in your area",
+          "Check local prices and buyers before changing crops",
+          "Review pest and herbicide carryover with a local adviser",
           "Crop parameter values need local expert review"
         ],
-        "confidence": "medium"
-      },
-      {
-        "id": "legume_swap",
-        "name": "Field pea",
-        "sequence": [
-          {
-            "crop_id": "field_pea",
-            "months": "Apr\u2013Aug"
-          }
-        ],
-        "scores": {
-          "water": 0.4224868538879503,
-          "soil_health": 0.7675,
-          "erosion": 0.4647349348080657,
-          "pest_break": 0.3333333333333333,
-          "climate_fit": 0.6497377888002861,
-          "income": 0.6,
-          "total": 0.5396321518049393
-        },
-        "delta_vs_current": {
-          "total": -0.0474
-        },
-        "why": "Jul\u2013Sep bare in 6 of 10 years (Sentinel-2 NDVI) Year-to-year rain variability is high (CV=0.33).",
-        "evidence": [
-          {
-            "text": "Seasons detected from Sentinel-2 NDVI: winter Oct\u2013Jun (peak 0.76); fallow Jul\u2013Sep",
-            "source": "Sentinel-2 NDVI",
-            "data_through": "September 2026"
-          },
-          {
-            "text": "Jul\u2013Sep bare in 6 of 10 years (Sentinel-2 NDVI)",
-            "source": "Sentinel-2 NDVI",
-            "data_through": "September 2026"
-          },
-          {
-            "text": "Mean annual rain_best \u2248 649 mm (2016-09 \u2192 2026-09)",
-            "source": "rain_best (POWER recent / IMERG long record)",
-            "data_through": "September 2026"
-          },
-          {
-            "text": "-0.5 \u00b1 0.0 cm/yr (2002\u20132024, GRACE/GRACE-FO, deseasonalized)",
-            "source": "GRACE/FO Mascon CRI (deseasonalized)",
-            "data_through": "September 2024"
-          },
-          {
-            "text": "Frost-free period \u2248 235 days",
-            "source": "NASA POWER T2M_MIN",
-            "data_through": "September 2026"
-          },
-          {
-            "text": "Erosion risk index \u2248 0.43 (0\u20131)",
-            "source": "SRTM slope + rain extremes + bare months",
-            "data_through": null
-          },
-          {
-            "text": "Growing-season anomaly: calendar month 1 (1 times)",
-            "source": "IsolationForest SI",
-            "data_through": "September 2026"
-          }
-        ],
-        "benefits": [
-          "Includes a nitrogen-fixing crop"
-        ],
-        "data_gaps": [
-          "grace_lwe_cm: 43 gap months (data through September 2024)",
-          "ndvi_s2: 9 gap months (data through September 2026)",
-          "IsolationForest (contamination=0.08, years=11) flags unusual patterns, not causes. Growing-season flags = crop vulnerability; winter/off-season flags are separate."
-        ],
-        "risks_for_local_review": [
-          "Check local seed availability and herbicide carryover",
-          "Confirm planting windows with a local agronomist",
-          "Crop parameter values need local expert review"
-        ],
-        "confidence": "medium"
+        "confidence": "medium",
+        "tier": "baseline",
+        "tier_label": "\u25ce Your rotation today",
+        "tier_reason": "This is the rotation you said you grow today.",
+        "unsuitable_reasons": [],
+        "soft_notes": []
       }
     ]
   },

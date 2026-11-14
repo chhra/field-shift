@@ -31,9 +31,9 @@ def test_iowa_cover_beats_current_soil_erosion_income_near(iowa_data) -> None:
     feats = compute_features(tidy, daily, current_rotation=["maize", "soybean"])
     current = score_strategy(["maize", "soybean"], feats)
     cover = score_strategy(["maize", "soybean", "cereal_rye_cover"], feats)
-    assert cover.soil_health > current.soil_health
+    assert cover.organic_matter > current.organic_matter
     assert cover.erosion > current.erosion
-    assert abs(cover.income - current.income) <= 0.05 + 1e-9
+    assert abs(cover.market - current.market) <= 0.05 + 1e-9
 
 
 def test_iowa_no_water_wise_or_lentil(iowa_data) -> None:

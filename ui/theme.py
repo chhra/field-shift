@@ -7,19 +7,19 @@ import streamlit as st
 # ---------------------------------------------------------------------------
 # Colour tokens (docs/DESIGN.md)
 # ---------------------------------------------------------------------------
-BACKGROUND = "#FAFAF8"
+BACKGROUND = "#FFFFFF"
 SURFACE = "#FFFFFF"
-SIDEBAR = "#F0EEE8"  # same family as page, slightly darker
-TEXT = "#2B2B2B"
-MUTED = "#5C5C5C"  # WCAG AA on BACKGROUND/SURFACE
+SIDEBAR = "#F0F2F6"  # Streamlit-demo soft grey for tracks / subtle fills
+TEXT = "#262730"
+MUTED = "#555555"  # WCAG AA on BACKGROUND/SURFACE
 PRIMARY = "#3F7D3A"
 WARNING = "#B26A00"
 DANGER = "#B23A3A"
 INFO = "#3A7CA5"
-CARD_BORDER = "#E8E6E0"
+CARD_BORDER = "#E6E6E6"
 HAIRLINE = CARD_BORDER
 FOCUS = "#2F5E2C"
-CARD_RADIUS = "10px"
+CARD_RADIUS = "6px"
 
 # Spacing scale (px)
 SPACE = (8, 16, 24, 32, 48)
@@ -46,11 +46,11 @@ CHART_COLORS = {
 }
 SCORE_COLORS = {
     "water": OKABE["sky"],
-    "soil_health": OKABE["bluish_green"],
-    "erosion": OKABE["orange"],
-    "pest_break": OKABE["purple"],
-    "climate_fit": OKABE["blue"],
-    "income": OKABE["vermillion"],
+    "forage": OKABE["orange"],
+    "nitrogen": OKABE["bluish_green"],
+    "erosion": OKABE["vermillion"],
+    "organic_matter": OKABE["purple"],
+    "market": OKABE["blue"],
     "total": PRIMARY,
 }
 
@@ -83,7 +83,35 @@ CONTRAST_PAIRS: list[tuple[str, str, str, float]] = [
     ("text_on_sidebar", TEXT, SIDEBAR, 4.5),
 ]
 
-_THEME_VERSION = "flatten-v1"
+_THEME_VERSION = "nav-align-v4"
+
+
+def inject_nav_active(active_path: str) -> None:
+    """Green underline on the current top tab (by Streamlit page href)."""
+    # Home uses empty href; other pages use their url_path.
+    href = (active_path or "").strip()
+    scope = 'div[data-testid="stHorizontalBlock"]:has(.fs-brand)'
+    selector = (
+        f'{scope} [data-testid="stPageLink"] a[href=""]'
+        if href == ""
+        else f'{scope} [data-testid="stPageLink"] a[href="{href}"]'
+    )
+    st.markdown(
+        f"""
+<style>
+{selector},
+{selector} * {{
+  color: {TEXT} !important;
+  font-weight: 600 !important;
+}}
+{selector} {{
+  border-bottom: 2px solid {PRIMARY} !important;
+  border-bottom-color: {PRIMARY} !important;
+}}
+</style>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def inject_theme() -> None:
@@ -106,68 +134,162 @@ div[data-testid="stDecoration"] {{ display: none; }}
   display: none !important;
 }}
 
+/* No sidebar — gallery-demo layout */
+section[data-testid="stSidebar"],
+[data-testid="stSidebar"],
+[data-testid="stSidebarContent"],
+[data-testid="stSidebarCollapsedControl"],
+button[kind="headerNoPadding"],
+[data-testid="collapsedControl"] {{
+  display: none !important;
+  width: 0 !important;
+  min-width: 0 !important;
+  visibility: hidden !important;
+}}
+section[data-testid="stSidebar"] {{
+  transform: translateX(-100%) !important;
+}}
+
 .stApp, [data-testid="stAppViewContainer"], [data-testid="stAppViewBlockContainer"] {{
   background: {BACKGROUND} !important;
 }}
 .block-container,
 [data-testid="stMainBlockContainer"] {{
   max-width: 1100px !important;
-  padding-top: 24px;
+  padding-top: 16px;
   padding-bottom: 48px;
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
 }}
 
-/* Strip Streamlit page / fragment chrome — borders only on strategy cards + charts */
+/* Strip all Streamlit bordered chrome — flat like Seattle weather demo */
 div[data-testid="stVerticalBlockBorderWrapper"],
 div[data-testid="stMainBlockContainer"],
 section.main .block-container {{
   border: none !important;
   box-shadow: none !important;
   outline: none !important;
+  background: transparent !important;
+  border-radius: 0 !important;
 }}
 div[data-testid="stVerticalBlockBorderWrapper"] {{
-  background: transparent !important;
   overflow: visible !important;
   height: auto !important;
-  border-radius: 0 !important;
+  padding: 0 !important;
 }}
 div[data-testid="stVerticalBlockBorderWrapper"] > div {{
   height: auto !important;
 }}
-[data-testid="stVerticalBlockBorderWrapper"]:not(:has(.fs-strat)):not(
-  :has(.fs-chart-wrap)
-):not(:has(.fs-demo-bordered)) {{
+
+/* Top header — wordmark + tabs on one baseline */
+.fs-brand {{
+  margin: 0 !important;
+  padding: 0 !important;
+  font-size: 22px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.03em !important;
+  color: {TEXT} !important;
+  line-height: 40px !important;
+  height: 40px !important;
+  white-space: nowrap;
+}}
+.fs-topnav-rule {{
+  height: 0;
+  margin: 0 0 22px 0;
+  border: none;
+  border-bottom: 1px solid {CARD_BORDER};
+}}
+/* One header row: brand + tabs on the same vertical center */
+div[data-testid="stHorizontalBlock"]:has(.fs-brand) {{
+  align-items: center !important;
+  gap: 4px !important;
+  margin: 0 0 0 0 !important;
+  min-height: 40px !important;
+}}
+div[data-testid="stHorizontalBlock"]:has(.fs-brand)
+> div[data-testid="stColumn"] {{
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-items: flex-start !important;
+  min-height: 40px !important;
+}}
+div[data-testid="stHorizontalBlock"]:has(.fs-brand)
+> div[data-testid="stColumn"] > div {{
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  gap: 0 !important;
+  width: 100%;
+}}
+div[data-testid="stHorizontalBlock"]:has(.fs-brand)
+[data-testid="stVerticalBlock"] {{
+  gap: 0 !important;
+}}
+div[data-testid="stHorizontalBlock"]:has(.fs-brand)
+[data-testid="element-container"],
+div[data-testid="stHorizontalBlock"]:has(.fs-brand)
+[data-testid="stMarkdownContainer"],
+div[data-testid="stHorizontalBlock"]:has(.fs-brand)
+[data-testid="stPageLink"] {{
+  margin: 0 !important;
+  padding: 0 !important;
+}}
+div[data-testid="stHorizontalBlock"]:has(.fs-brand)
+[data-testid="stPageLink"] {{
+  width: auto !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  height: 40px !important;
+}}
+div[data-testid="stHorizontalBlock"]:has(.fs-brand)
+[data-testid="stPageLink"] a,
+div[data-testid="stHorizontalBlock"]:has(.fs-brand)
+[data-testid="stPageLink-NavLink"] {{
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: auto !important;
+  min-width: 0 !important;
+  min-height: 40px !important;
+  height: 40px !important;
+  padding: 0 2px !important;
+  margin: 0 !important;
   border: none !important;
+  border-bottom: 2px solid transparent !important;
+  border-radius: 0 !important;
+  background: transparent !important;
   box-shadow: none !important;
+  outline: none !important;
+  color: {MUTED} !important;
+  font-weight: 500 !important;
+  font-size: 15px !important;
+  letter-spacing: -0.01em !important;
+  text-decoration: none !important;
+  white-space: nowrap !important;
+  line-height: 1 !important;
+  box-sizing: border-box !important;
+  transition: color 0.15s ease, border-color 0.15s ease !important;
+}}
+div[data-testid="stHorizontalBlock"]:has(.fs-brand)
+[data-testid="stPageLink"] a:hover {{
+  color: {TEXT} !important;
+  background: transparent !important;
+  border-bottom-color: {CARD_BORDER} !important;
+}}
+div[data-testid="stHorizontalBlock"]:has(.fs-brand)
+[data-testid="stPageLink"] a *,
+div[data-testid="stHorizontalBlock"]:has(.fs-brand)
+[data-testid="stPageLink-NavLink"] * {{
+  color: inherit !important;
   background: transparent !important;
 }}
-
-/* Sidebar — same family as page, slightly darker */
-section[data-testid="stSidebar"],
-section[data-testid="stSidebar"] > div,
-[data-testid="stSidebarContent"] {{
-  background-color: {SIDEBAR} !important;
-  background-image: none !important;
-  border-right: 1px solid {CARD_BORDER} !important;
-}}
-section[data-testid="stSidebar"] p,
-section[data-testid="stSidebar"] span,
-section[data-testid="stSidebar"] label,
-section[data-testid="stSidebar"] a {{
-  color: {TEXT} !important;
-}}
-section[data-testid="stSidebar"] [data-testid="stSidebarNavLink"] {{
-  border-radius: {CARD_RADIUS};
-  margin: 4px 8px;
-  padding: 12px 16px !important;
-  min-height: 44px;
-}}
-section[data-testid="stSidebar"] [data-testid="stSidebarNavLink"][aria-current="page"],
-section[data-testid="stSidebar"] [data-testid="stSidebarNavLink"]:hover {{
-  background: {SURFACE} !important;
-  box-shadow: inset 0 0 0 1px {CARD_BORDER};
+div[data-testid="stHorizontalBlock"]:has(.fs-brand)
+[data-testid="stPageLink"] span[data-testid="stIconEmoji"],
+div[data-testid="stHorizontalBlock"]:has(.fs-brand)
+[data-testid="stPageLink"] [data-testid="stIconMaterial"] {{
+  display: none !important;
 }}
 
 /* Typography scale */
@@ -239,20 +361,24 @@ p, .stMarkdown p {{
   max-width: 640px;
   line-height: 1.45;
 }}
+/* Status chip — text + green underline, not a solid button */
 .fs-mode-pill {{
   display: inline-block;
-  margin-top: 16px;
-  padding: 8px 16px;
-  border-radius: {CARD_RADIUS};
-  background: {PRIMARY};
-  color: {SURFACE} !important;
+  margin-top: 14px;
+  padding: 4px 0 6px 0;
+  border: none;
+  border-bottom: 2px solid {PRIMARY};
+  border-radius: 0;
+  background: transparent;
+  color: {PRIMARY} !important;
   font-size: 13px;
   font-weight: 600;
-  min-height: 44px;
-  line-height: 28px;
+  line-height: 1.3;
+  min-height: 0;
 }}
 .fs-mode-pill.demo {{
-  background: {MUTED};
+  border-bottom-color: {MUTED};
+  color: {MUTED} !important;
 }}
 
 .fs-section {{
@@ -372,14 +498,35 @@ p, .stMarkdown p {{
   .fs-chip-grid {{ grid-template-columns: 1fr 1fr; }}
 }}
 
-/* Strategy cards */
+/* Options grid labels */
+.fs-options-label {{
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: {MUTED};
+  margin: 24px 0 12px 0;
+}}
+
+/* Strategy cards — even columns, shared score figure */
 .fs-strat {{
   margin: 0;
-  padding-top: 0;
+  padding: 16px 8px 12px 0;
+  border-top: 1px solid {CARD_BORDER};
   overflow: visible;
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 520px;
+}}
+.fs-tier-kicker {{
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: {MUTED};
+  margin: 0 0 8px 0;
+  min-height: 1.2em;
 }}
 .fs-best-badge {{
   display: inline-block;
@@ -390,6 +537,7 @@ p, .stMarkdown p {{
   padding: 2px 8px;
   border-radius: 6px;
   margin: 0 0 8px 0;
+  width: fit-content;
 }}
 .fs-strat-title {{
   font-size: 16px;
@@ -405,7 +553,7 @@ p, .stMarkdown p {{
   color: {MUTED};
   margin: 8px 0 0;
   line-height: 1.45;
-  min-height: 2.9em;
+  min-height: 3.9em;
 }}
 .fs-strat-flags {{
   min-height: 20px;
@@ -425,6 +573,7 @@ p, .stMarkdown p {{
   padding: 0;
   background: transparent;
   border: none;
+  min-height: 52px;
 }}
 .fs-overall-label {{
   font-size: 13px;
@@ -433,7 +582,7 @@ p, .stMarkdown p {{
   margin: 0 0 2px 0;
 }}
 .fs-overall-num {{
-  font-size: 32px;
+  font-size: 36px;
   font-weight: 600;
   color: {TEXT};
   line-height: 1.1;
@@ -446,6 +595,7 @@ p, .stMarkdown p {{
   border-radius: 0;
   white-space: nowrap;
   background: transparent !important;
+  text-align: right;
 }}
 .fs-card-delta.up {{ color: {PRIMARY}; }}
 .fs-card-delta.down {{ color: {DANGER}; }}
@@ -458,45 +608,86 @@ p, .stMarkdown p {{
 .fs-card-spacer {{
   flex: 1 1 auto;
   min-height: 8px;
-  height: 8px;
 }}
-
+.fs-score-heading {{
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: {MUTED};
+  margin: 12px 0 8px 0;
+}}
+.fs-score-grid {{
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 0 12px 0;
+  min-height: 168px;
+}}
+.fs-score-row {{
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}}
+.fs-score-top {{
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}}
+.fs-score-name {{
+  font-size: 12px;
+  font-weight: 500;
+  color: {TEXT};
+}}
+.fs-score-pct {{
+  font-size: 12px;
+  font-weight: 600;
+  color: {MUTED};
+  font-variant-numeric: tabular-nums;
+}}
+.fs-score-track {{
+  height: 6px;
+  background: {SIDEBAR};
+  border-radius: 3px;
+  overflow: hidden;
+}}
+.fs-score-fill {{
+  height: 100%;
+  border-radius: 3px;
+  min-width: 2px;
+}}
+.fs-compare-note {{
+  font-size: 12px;
+  color: {MUTED};
+  margin: 0 0 8px 0;
+  min-height: 3.6em;
+  line-height: 1.4;
+}}
 .fs-diff-list {{
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin: 12px 0 8px 0;
-  min-height: 96px;
+  gap: 6px;
+  margin: 0 0 8px 0;
+  min-height: 3.6em;
 }}
-.fs-diff-top {{
+.fs-diff-line {{
   display: flex;
   justify-content: space-between;
   gap: 8px;
   align-items: baseline;
-  margin-bottom: 4px;
+  font-size: 12px;
+  line-height: 1.35;
 }}
 .fs-diff-name {{
-  font-size: 13px;
   font-weight: 500;
   color: {TEXT};
 }}
 .fs-diff-band {{
-  font-size: 12px;
   color: {MUTED};
   flex-shrink: 0;
   font-variant-numeric: tabular-nums;
-}}
-.fs-diff-track {{
-  height: 6px;
-  background: {SIDEBAR};
-  border: none;
-  border-radius: 3px;
-  overflow: hidden;
-}}
-.fs-diff-fill {{
-  height: 100%;
-  border-radius: 3px;
-  min-width: 2px;
+  text-align: right;
 }}
 .fs-conf {{
   font-size: 12px;
@@ -505,62 +696,34 @@ p, .stMarkdown p {{
   letter-spacing: 0.01em;
 }}
 
-/* Equal-height strategy card rows only */
+/* Equal-height option / demo columns */
 div[data-testid="stHorizontalBlock"] {{
   align-items: flex-start !important;
-  gap: 16px !important;
+  gap: 24px !important;
 }}
-div[data-testid="stHorizontalBlock"]:has(.fs-strat) {{
+div[data-testid="stHorizontalBlock"]:has(.fs-strat),
+div[data-testid="stHorizontalBlock"]:has(.fs-demo-copy) {{
   align-items: stretch !important;
 }}
-div[data-testid="stHorizontalBlock"]:has(.fs-strat) > div[data-testid="stColumn"] {{
+div[data-testid="stHorizontalBlock"]:has(.fs-strat) > div[data-testid="stColumn"],
+div[data-testid="stHorizontalBlock"]:has(.fs-demo-copy) > div[data-testid="stColumn"] {{
   display: flex !important;
   flex-direction: column;
 }}
-div[data-testid="stHorizontalBlock"]:has(.fs-strat) > div[data-testid="stColumn"] > div {{
+div[data-testid="stHorizontalBlock"]:has(.fs-strat) > div[data-testid="stColumn"] > div,
+div[data-testid="stHorizontalBlock"]:has(.fs-demo-copy) > div[data-testid="stColumn"] > div {{
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
-}}
-div[data-testid="stVerticalBlockBorderWrapper"]:has(.fs-strat) {{
   height: 100%;
-  display: flex !important;
-  flex-direction: column;
-  border: 1px solid {CARD_BORDER} !important;
-  border-radius: {CARD_RADIUS} !important;
-  background: {SURFACE} !important;
-  box-shadow: none !important;
-  overflow: visible !important;
-  padding: 12px 14px 8px 14px;
-}}
-div[data-testid="stVerticalBlockBorderWrapper"]:has(.fs-strat) > div {{
-  height: 100%;
-  display: flex !important;
-  flex-direction: column;
-}}
-div[data-testid="stVerticalBlockBorderWrapper"]:has(.fs-strat)
-[data-testid="element-container"] {{
-  flex: 0 0 auto !important;
-  height: auto !important;
-}}
-div[data-testid="stVerticalBlockBorderWrapper"]:has(.fs-strat)
-[data-testid="element-container"]:has(.fs-card-spacer) {{
-  flex: 1 1 auto !important;
-}}
-
-/* Chart wrappers — thin border only */
-div[data-testid="stVerticalBlockBorderWrapper"]:has(.fs-chart-wrap) {{
-  border: 1px solid {CARD_BORDER} !important;
-  border-radius: {CARD_RADIUS} !important;
-  background: {SURFACE} !important;
-  box-shadow: none !important;
-  padding: 8px;
 }}
 .fs-chart-wrap {{
-  margin: 0;
-  padding: 0;
-  height: 0;
-  overflow: hidden;
+  display: none;
+}}
+/* Plotly / map figures — consistent breathing room */
+div[data-testid="stPlotlyChart"],
+iframe[title="streamlit_folium.st_folium"] {{
+  margin: 4px 0 8px 0;
 }}
 
 .fs-banner {{
@@ -588,7 +751,7 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.fs-chart-wrap) {{
 .fs-pill {{
   display: inline-block;
   background: {SIDEBAR};
-  border: 1px solid {CARD_BORDER};
+  border: none;
   border-radius: {CARD_RADIUS};
   padding: 4px 12px;
   font-size: 13px;
@@ -692,23 +855,15 @@ input:focus-visible,
   background: transparent !important;
   border: none !important;
 }}
-div[data-testid="stVerticalBlockBorderWrapper"]:has(.fs-strat)
-[data-testid="stExpander"] details {{
-  background: transparent !important;
-  border: none !important;
-  border-top: 1px solid {CARD_BORDER} !important;
-  border-radius: 0 !important;
-}}
-
 div[data-testid="stDataFrame"] {{
-  border: 1px solid {CARD_BORDER};
-  border-radius: {CARD_RADIUS};
+  border: none;
+  border-radius: 0;
   overflow: hidden;
 }}
 
 [data-testid="stImage"] img {{
-  border-radius: {CARD_RADIUS};
-  border: 1px solid {CARD_BORDER};
+  border-radius: 0;
+  border: none;
 }}
 div[data-testid="stHorizontalBlock"] [data-testid="stImage"] img {{
   max-height: 320px;
@@ -719,17 +874,18 @@ div[data-testid="stHorizontalBlock"] [data-testid="stImage"] img {{
 .fs-demo-thumb-empty {{
   aspect-ratio: 5 / 4;
   background: {SIDEBAR};
-  border: 1px solid {CARD_BORDER};
-  border-radius: {CARD_RADIUS};
+  border: none;
+  border-radius: 0;
 }}
 .fs-demo-bordered {{
-  /* marker for demo field card thin border wrappers */
-  height: 0;
-  overflow: hidden;
+  display: none;
 }}
 .fs-demo-copy {{
-  min-height: 120px;
-  margin: 8px 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 132px;
+  margin: 12px 0 8px 0;
+  flex: 1 1 auto;
 }}
 .fs-demo-card-title {{
   font-weight: 600;
@@ -749,16 +905,7 @@ div[data-testid="stHorizontalBlock"] [data-testid="stImage"] img {{
 .fs-demo-card-rot {{
   color: {TEXT};
   font-size: 13px;
-  margin: 0;
-}}
-
-/* Demo field cards — one thin border each */
-div[data-testid="stVerticalBlockBorderWrapper"]:has(.fs-demo-bordered) {{
-  border: 1px solid {CARD_BORDER} !important;
-  border-radius: {CARD_RADIUS} !important;
-  background: {SURFACE} !important;
-  box-shadow: none !important;
-  padding: 12px;
+  margin: auto 0 0 0;
 }}
 
 .fs-glossary {{

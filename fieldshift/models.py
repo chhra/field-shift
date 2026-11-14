@@ -7,14 +7,17 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 Confidence = Literal["high", "medium", "low"]
+# Engine water access (resolved from farmer categories).
 WaterAccess = Literal["rainfed", "limited", "irrigated"]
 SoilType = Literal["sand", "loam", "clay", "silt", "unknown"]
 TimelapseIndex = Literal["ndvi", "rgb"]
-NitrogenUse = Literal["low", "medium", "high", "unknown"]
-LaborLevel = Literal["low", "normal", "high"]
-BudgetLevel = Literal["low", "normal"]
-MarketAccess = Literal["buyer", "no_market", "unknown"]
 StrategyTier = Literal["best_fit", "worth_considering", "baseline", "not_suitable"]
+# Farmer-facing categories (see inputs_config.py).
+WaterCategory = Literal[
+    "rain_only", "some_irrigation", "fully_irrigated", "not_sure"
+]
+SoilCategory = Literal["sandy", "loamy", "silty", "clay", "not_sure"]
+GoalImportance = Literal[0, 1, 2]
 
 
 class HealthResponse(BaseModel):
@@ -45,14 +48,17 @@ class EvidenceItem(BaseModel):
 
 
 class ScoreSet(BaseModel):
-    """Per-criterion scores in [0, 1] plus weighted total."""
+    """Per-criterion scores in [0, 1] plus weighted total.
+
+    Exactly six farmer goals, in display order.
+    """
 
     water: float
-    soil_health: float
+    forage: float
+    nitrogen: float
     erosion: float
-    pest_break: float
-    climate_fit: float
-    income: float
+    organic_matter: float
+    market: float
     total: float
 
 
@@ -61,20 +67,43 @@ class CropInSequence(BaseModel):
 
     crop_id: str
     months: str
+    # Satellite-detected planting/harvest (1–12); optional overrides from farmer.
+    plant_month: int | None = None
+    harvest_month: int | None = None
+
+
+class GoalImportanceSet(BaseModel):
+    """0 = Not important, 1 = Important, 2 = Very important."""
+
+    water: GoalImportance = 1
+    forage: GoalImportance = 0
+    nitrogen: GoalImportance = 1
+    erosion: GoalImportance = 1
+    organic_matter: GoalImportance = 1
+    market: GoalImportance = 1
+
+
+class PriorityWeights(BaseModel):
+    """Normalized or raw relative weights for the six goals.
+
+    ``score_strategy`` normalizes by sum; all-zero is handled via inputs_config.
+    """
+
+    water: float = 1.0
+    forage: float = 0.0
+    nitrogen: float = 1.0
+    erosion: float = 1.0
+    organic_matter: float = 1.0
+    market: float = 1.0
 
 
 class FarmConstraints(BaseModel):
-    """Hard/soft farm constraints — not priority weights.
+    """Legacy shell kept for API compatibility — machinery/buyers removed.
 
-    Machinery fields: True = have it, False = don't, None = don't know (no hard block).
+    Water/soil filtering is applied in candidates + scoring, not here.
     """
 
-    has_small_grain_harvest: bool | None = None
-    has_hay_forage_equipment: bool | None = None
-    has_row_crop_planter: bool | None = None
-    labor: LaborLevel = "normal"
-    budget_new_seed: BudgetLevel = "normal"
-    market_access: dict[str, MarketAccess] = Field(default_factory=dict)
+    pass
 
 
 class StrategyCard(BaseModel):
@@ -98,17 +127,6 @@ class StrategyCard(BaseModel):
     soft_notes: list[str] = Field(default_factory=list)
 
 
-class PriorityWeights(BaseModel):
-    """Farmer priority sliders (relative weights)."""
-
-    water: float = 1.0
-    soil_health: float = 1.0
-    erosion: float = 1.0
-    pest_break: float = 1.0
-    climate_fit: float = 1.0
-    income: float = 1.0
-
-
 class ScenarioParams(BaseModel):
     """What-if adjustments applied before re-scoring."""
 
@@ -117,17 +135,25 @@ class ScenarioParams(BaseModel):
 
 
 class StrategyRequest(BaseModel):
-    """Body for POST /api/fields/{id}/strategies."""
+    """Body for strategy generation from the Field page."""
 
     current_rotation: list[str]
-    soil_type: SoilType = "unknown"
+    water_category: WaterCategory = "rain_only"
+    soil_category: SoilCategory = "loamy"
+    # Resolved engine fields (filled by services / UI before generate).
+    soil_type: SoilType = "loam"
     water_access: WaterAccess = "rainfed"
-    irrigations_per_season: int = Field(default=0, ge=0, le=20)
-    nitrogen: NitrogenUse = "unknown"
-    livestock: bool = False
+    goal_importance: GoalImportanceSet = Field(default_factory=GoalImportanceSet)
     weights: PriorityWeights = Field(default_factory=PriorityWeights)
     constraints: FarmConstraints = Field(default_factory=FarmConstraints)
     scenario: ScenarioParams = Field(default_factory=ScenarioParams)
+    # Farmer-moved planting months vs satellite (crop_id → plant month 1–12).
+    plant_month_overrides: dict[str, int] = Field(default_factory=dict)
+    harvest_month_overrides: dict[str, int] = Field(default_factory=dict)
+    # Extra data gaps from UI (Not sure, month shifts, equal-weights note).
+    input_data_gaps: list[str] = Field(default_factory=list)
+    input_confidence_penalty: bool = False
+    equal_weights_note: str | None = None
 
 
 class StrategyResult(BaseModel):
@@ -179,13 +205,12 @@ class FieldConditions(BaseModel):
     features: FieldFeatures
     timelapse_url: str | None = None
     sources_used: list[str] = Field(default_factory=list)
-    # Phase 7 embeds; null until US module / cross-checks exist
     us_module: dict[str, Any] | None = None
     cross_checks: dict[str, Any] | None = None
 
 
 class AnalyzeRequest(BaseModel):
-    """Body for POST /api/analyze."""
+    """Body for analyze."""
 
     polygon: dict[str, Any]
     name: str | None = None

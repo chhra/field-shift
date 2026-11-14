@@ -1,19 +1,12 @@
-"""Farm constraint checks — hard exclusions and soft penalties."""
+"""Farm constraint checks — water/irrigation crop filters (machinery/buyers removed)."""
 
 from __future__ import annotations
 
 from typing import Any
 
 from fieldshift.engine.crops import crop_by_id
-from fieldshift.engine.thresholds import (
-    BUDGET_LOW_COVER_PENALTY,
-    HAY_FORAGE_MIN,
-    LABOR_LOW_COVER_PENALTY,
-    MARKET_NO_BUYER_BLOCKS_CASH,
-    ROW_CROP_IDS,
-    SMALL_GRAIN_IDS,
-)
-from fieldshift.models import FarmConstraints
+from fieldshift.engine.inputs_config import NEEDS_IRRIGATION_CROP_IDS
+from fieldshift.models import FarmConstraints, WaterAccess
 
 
 def sequence_has_legume(sequence: list[str]) -> bool:
@@ -22,57 +15,26 @@ def sequence_has_legume(sequence: list[str]) -> bool:
 
 def evaluate_constraints(
     sequence: list[str],
-    constraints: FarmConstraints,
+    constraints: FarmConstraints | None = None,
     *,
-    livestock: bool = False,
+    water_access: WaterAccess = "rainfed",
 ) -> dict[str, Any]:
-    """Return hard unsuitable reasons and soft penalty amount + notes.
+    """Hard exclusions for irrigation-needy crops under rain-only water access.
 
-    Soft penalties reduce the displayed total but do not alone force Not suitable.
+    Soft penalties from labour/budget/machinery are removed.
     """
+    _ = constraints  # kept for call-site compatibility
     hard: list[str] = []
     soft_notes: list[str] = []
     soft_penalty = 0.0
 
-    ids = set(sequence)
-    covers = [c for c in sequence if crop_by_id(c)["type"] == "cover"]
-    cash = [c for c in sequence if crop_by_id(c)["type"] != "cover"]
-
-    # Machinery
-    if constraints.has_small_grain_harvest is False and ids & SMALL_GRAIN_IDS:
-        hard.append("Needs small-grain harvest equipment you said you don't have")
-    if constraints.has_row_crop_planter is False and ids & ROW_CROP_IDS:
-        hard.append("Needs a row-crop planter you said you don't have")
-    needs_hay = any(
-        float(crop_by_id(c).get("forage_value") or 0) >= HAY_FORAGE_MIN for c in sequence
-    )
-    if constraints.has_hay_forage_equipment is False and needs_hay and not livestock:
-        # With livestock, forage can be grazed without hay kit
-        hard.append("Needs hay/forage equipment (or livestock grazing) for forage crops")
-
-    # Market access — cash crops only
-    if MARKET_NO_BUYER_BLOCKS_CASH:
-        for cid in cash:
-            access = constraints.market_access.get(cid, "unknown")
-            if access == "no_market":
-                # On-farm forage/cover exception already excludes covers from cash
+    if water_access == "rainfed":
+        for cid in sequence:
+            if cid in NEEDS_IRRIGATION_CROP_IDS:
                 hard.append(
-                    f"No local market for {crop_by_id(cid)['name']} "
-                    "(and it is not an on-farm forage/cover use)"
+                    f"{crop_by_id(cid)['name']} usually needs irrigation — "
+                    "not suitable under rain only"
                 )
-
-    # Soft: budget / labor for new covers
-    if covers:
-        if constraints.budget_new_seed == "low":
-            soft_penalty += BUDGET_LOW_COVER_PENALTY
-            soft_notes.append(
-                f"Low seed budget (−{BUDGET_LOW_COVER_PENALTY:.2f} soft penalty for cover seed)"
-            )
-        if constraints.labor == "low":
-            soft_penalty += LABOR_LOW_COVER_PENALTY
-            soft_notes.append(
-                f"Low labor (−{LABOR_LOW_COVER_PENALTY:.2f} soft penalty for managing cover)"
-            )
 
     return {
         "unsuitable": bool(hard),

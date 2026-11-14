@@ -4,33 +4,34 @@ from __future__ import annotations
 
 from typing import Any
 
+from fieldshift.engine.inputs_config import GOAL_LABELS
 from fieldshift.engine.thresholds import DELTA_NEUTRAL_THRESHOLD
 
 SCORE_KEYS = (
     "water",
-    "soil_health",
+    "forage",
+    "nitrogen",
     "erosion",
-    "pest_break",
-    "climate_fit",
-    "income",
+    "organic_matter",
+    "market",
 )
 
 _LABELS = {
-    "water": "Water",
-    "soil_health": "Soil health",
-    "erosion": "Erosion",
-    "pest_break": "Pest break",
-    "climate_fit": "Climate fit",
-    "income": "Income",
+    "water": GOAL_LABELS["water"],
+    "forage": GOAL_LABELS["forage"],
+    "nitrogen": GOAL_LABELS["nitrogen"],
+    "erosion": GOAL_LABELS["erosion"],
+    "organic_matter": GOAL_LABELS["organic_matter"],
+    "market": GOAL_LABELS["market"],
 }
 
 _FRIENDLY = {
-    "water": "water match",
-    "soil_health": "soil health",
+    "water": "water use",
+    "forage": "animal feed value",
+    "nitrogen": "natural nitrogen",
     "erosion": "erosion protection",
-    "pest_break": "pest break",
-    "climate_fit": "climate fit",
-    "income": "income potential",
+    "organic_matter": "organic matter",
+    "market": "market potential",
 }
 
 
@@ -51,10 +52,7 @@ def format_delta_label(
     *,
     threshold: float = DELTA_NEUTRAL_THRESHOLD,
 ) -> tuple[str, str]:
-    """Return (display text, tone) for overall delta vs current rotation.
-
-    tone is one of: neutral | up | down
-    """
+    """Return (display text, tone) for overall delta vs current rotation."""
     if delta is None:
         return "Compared to yours", "neutral"
     if abs(float(delta)) < threshold:
@@ -71,11 +69,7 @@ def top_criterion_diffs(
     *,
     n: int = 3,
 ) -> list[dict[str, Any]]:
-    """Return the n criteria with largest |delta| vs baseline.
-
-    Each item: key, label, delta, pct (0–100), direction ('better'|'worse'|'same'),
-    band word for the option's absolute score.
-    """
+    """Return the n criteria with largest |delta| vs baseline."""
     rows: list[dict[str, Any]] = []
     for key in SCORE_KEYS:
         val = float(getattr(scores, key))
@@ -126,9 +120,7 @@ def farmer_comparison_sentence(
     if overall_close and not meaningful:
         return "Similar overall to your rotation on the measures that matter most."
     if overall_close and better and not worse:
-        return (
-            f"Similar overall to your rotation, with better {_join(better)}."
-        )
+        return f"Similar overall to your rotation, with better {_join(better)}."
     if overall_close and better and worse:
         return (
             f"Similar overall to your rotation, with better {_join(better)} "
@@ -181,7 +173,6 @@ def rotation_title_line(sequence: list[Any]) -> str:
             slot.get("months") if isinstance(slot, dict) else ""
         )
         name = str(crop).replace("_", " ").title()
-        # Cover crops: keep short "cover" cue when type is in the id/name
         if "cover" in str(crop).lower() and "cover" not in name.lower():
             name = f"{name} cover"
         months_s = _clean_months(str(months)) if months else ""

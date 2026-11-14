@@ -46,12 +46,17 @@ COOL_SEASON_IDS = {
 
 
 def climate_ok(crop: dict[str, Any], features: dict[str, Any], water_access: WaterAccess) -> bool:
-    """Filter: frost-free days, GDD (water need checked via IR scoring, not hard fail)."""
+    """Filter: frost-free days, GDD, and irrigation need under rain-only."""
+    from fieldshift.engine.inputs_config import NEEDS_IRRIGATION_CROP_IDS
+
     frost = features.get("frost_window", {}).get("frost_free_days")
     gdd = features.get("gdd", {}).get("gdd_annual_mean")
     if frost is not None and crop["min_frost_free_days"] > frost:
         return False
     if gdd is not None and crop["gdd_required"] > gdd * 1.05:
+        return False
+    # Rain only / limited: exclude crops that need full irrigation
+    if water_access == "rainfed" and crop.get("id") in NEEDS_IRRIGATION_CROP_IDS:
         return False
     # Irrigated: allow high water-need crops through climate filter (score handles IR)
     if water_access == "irrigated":
