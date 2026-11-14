@@ -1,0 +1,41 @@
+NASA POWER DATA QUALITY REPORT
+=============================================
+Original rows: 9812
+Cleaned rows: 9812
+Duplicates removed: 0
+Invalid dates removed: 0
+Start date: 2000-01-01 00:00:00
+End date: 2026-11-11 00:00:00
+Expected daily observations: 9812
+Observed daily observations: 9812
+Missing calendar days: 0
+
+Invalid values converted to missing:
+t2m: 0
+t2m_max: 0
+t2m_min: 0
+rh2m: 0
+prectotcorr: 0
+tmin_greater_than_tmax: 0
+t2m_outside_daily_range: 0
+
+Missing values by column:
+date: 0 (0.0%)
+latitude: 0 (0.0%)
+longitude: 0 (0.0%)
+t2m: 0 (0.0%)
+t2m_max: 0 (0.0%)
+t2m_min: 0 (0.0%)
+prectotcorr: 0 (0.0%)
+rh2m: 0 (0.0%)
+
+Final dataset information:
+                      date     latitude    longitude          t2m      t2m_max      t2m_min  prectotcorr         rh2m
+count                 9812  9812.000000  9812.000000  9812.000000  9812.000000  9812.000000  9812.000000  9812.000000
+mean   2013-06-06 12:00:00    52.704552     0.243161    10.385047    14.586374     6.423006     1.865955    84.459320
+min    2000-01-01 00:00:00    52.704552     0.243161    -4.420000    -2.480000    -7.430000     0.000000    51.260000
+25%    2006-09-18 18:00:00    52.704552     0.243161     6.110000     9.630000     2.777500     0.110000    78.200000
+50%    2013-06-06 12:00:00    52.704552     0.243161    10.330000    14.670000     6.480000     0.510000    84.150000
+75%    2020-02-23 06:00:00    52.704552     0.243161    14.960000    19.660000    10.270000     2.150000    91.220000
+max    2026-11-11 00:00:00    52.704552     0.243161    25.850000    35.050000    19.070000    41.210000    99.800000
+std                    NaN     0.000000     0.000000     5.616519     6.397315     4.866601     3.302230     8.023483

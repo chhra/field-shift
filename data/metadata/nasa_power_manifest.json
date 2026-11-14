@@ -1,0 +1,39 @@
+{
+    "dataset_name": "NASA POWER Climate Dataset",
+    "dataset_version": "1.0",
+    "source": "NASA POWER",
+    "source_file": "data\\processed\\nasa_power_clean.csv",
+    "output_file": "data\\processed\\climate\\nasa_power.parquet",
+    "format": "Parquet",
+    "compression": "Snappy",
+    "created_by": "FieldShift Data Preparation Pipeline",
+    "temporal_resolution": "Daily",
+    "start_date": "2000-01-01",
+    "end_date": "2026-11-11",
+    "expected_calendar_days_per_location": 9812,
+    "total_rows": 9812,
+    "number_of_locations": 1,
+    "locations": [
+        {
+            "latitude": 52.7045524,
+            "longitude": 0.2431611
+        }
+    ],
+    "missing_values": 0,
+    "duplicate_records": 0,
+    "missing_days_by_location": {
+        "52.7045524,0.2431611": 0
+    },
+    "columns": [
+        "date",
+        "latitude",
+        "longitude",
+        "t2m",
+        "t2m_max",
+        "t2m_min",
+        "prectotcorr",
+        "rh2m"
+    ],
+    "input_sha256": "b18f857af85853a66725cddac3e0e48b9240bf910a8a2da6e18c5eac740b26de",
+    "verified_parquet_round_trip": true
+}
