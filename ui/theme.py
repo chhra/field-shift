@@ -54,6 +54,21 @@ SCORE_COLORS = {
     "total": PRIMARY,
 }
 
+# Farming-year calendar fills by crop family; dark TEXT stays ≥4.5:1 on each.
+CROP_FAMILY_FILLS = {
+    "poaceae": "#E3B23C",
+    "fabaceae": "#7DB86A",
+    "brassicaceae": "#C3A6E0",
+}
+CROP_FAMILY_FILLS_ALT = {
+    "poaceae": "#F2D58A",
+    "fabaceae": "#AFD6A0",
+    "brassicaceae": "#DDCBEF",
+}
+CROP_OTHER_FILL = "#9CC3D3"
+BARE_SOIL_FILL = "#F3EBDD"
+COVER_LEGEND_FILL = "#B5B5B5"
+
 # Back-compat aliases used across the codebase
 PAPER = SURFACE
 PANEL = SIDEBAR
@@ -83,7 +98,7 @@ CONTRAST_PAIRS: list[tuple[str, str, str, float]] = [
     ("text_on_sidebar", TEXT, SIDEBAR, 4.5),
 ]
 
-_THEME_VERSION = "ui-polish-v2"
+_THEME_VERSION = "visual-questions-v1"
 
 
 def inject_nav_active(active_path: str) -> None:
@@ -397,15 +412,68 @@ p, .stMarkdown p {{
   line-height: 1.5;
 }}
 
-/* Horizontal radios — wrap on narrow widths; keep touch targets */
+/* Horizontal radios render as answer tiles; the dot stays as the selection cue */
 div[data-testid="stRadio"] [role="radiogroup"] {{
   flex-wrap: wrap !important;
-  gap: 6px 14px !important;
-  row-gap: 8px !important;
+  gap: 8px !important;
 }}
-div[data-testid="stRadio"] label {{
+div[data-testid="stRadio"] [role="radiogroup"] > label[data-baseweb="radio"] {{
+  margin: 0 !important;
+  padding: 8px 14px 8px 10px !important;
+  min-height: 44px !important;
+  line-height: 1.3 !important;
+  align-items: center !important;
+  border: 1.5px solid {CARD_BORDER};
+  border-radius: 10px;
+  background: {SURFACE};
+  cursor: pointer;
+  transition: border-color .12s ease, background-color .12s ease;
+}}
+div[data-testid="stRadio"] [role="radiogroup"] > label[data-baseweb="radio"]:hover {{
+  border-color: #A9C3A5;
+}}
+div[data-testid="stRadio"] [role="radiogroup"] > label[data-baseweb="radio"]:has(input:checked) {{
+  border-color: {PRIMARY};
+  background: #EFF6ED;
+}}
+div[data-testid="stRadio"] [role="radiogroup"]:focus-within > label:has(input:checked) {{
+  outline: 3px solid {FOCUS};
+  outline-offset: 2px;
+}}
+div[data-testid="stRadio"] label[data-baseweb="radio"] [data-testid="stMarkdownContainer"] p {{
+  font-size: 15px;
+  font-weight: 500;
+}}
+@media (prefers-reduced-motion: reduce) {{
+  div[data-testid="stRadio"] label[data-baseweb="radio"] {{ transition: none; }}
+}}
+
+/* Goal cards: three equal reply tiles */
+[class*="st-key-goal-"] [role="radiogroup"] {{ flex-wrap: nowrap !important; gap: 6px !important; }}
+[class*="st-key-goal-"] [role="radiogroup"] > label[data-baseweb="radio"] {{
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 6px 8px 6px 6px !important;
   min-height: 40px !important;
-  line-height: 1.35 !important;
+}}
+
+/* Soil tiles carry a colour swatch of the soil */
+[class*="st-key-soil-cat-"] [role="radiogroup"] > label p::before {{
+  content: "";
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin: 0 8px -2px 0;
+  border-radius: 4px;
+  background: var(--fs-soil, transparent);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.15);
+}}
+[class*="st-key-soil-cat-"] [role="radiogroup"] > label:nth-of-type(1) {{ --fs-soil: #E4CB86; }}
+[class*="st-key-soil-cat-"] [role="radiogroup"] > label:nth-of-type(2) {{ --fs-soil: #8A6038; }}
+[class*="st-key-soil-cat-"] [role="radiogroup"] > label:nth-of-type(3) {{ --fs-soil: #BCAE97; }}
+[class*="st-key-soil-cat-"] [role="radiogroup"] > label:nth-of-type(4) {{ --fs-soil: #A4532F; }}
+[class*="st-key-soil-cat-"] [role="radiogroup"] > label:nth-of-type(5) p::before {{
+  display: none;
 }}
 div[data-testid="stCheckbox"] label {{
   min-height: 40px !important;
@@ -422,30 +490,186 @@ div[data-testid="stCheckbox"] label {{
   color: {TEXT};
   max-width: 640px;
 }}
-.fs-farm-step {{
-  margin: 28px 0 6px 0;
+/* Farmer questions: the question is the heading, one reason line under it */
+.fs-q {{
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 36px 0 12px 0;
+}}
+.fs-q-num {{
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: {PRIMARY};
+  color: #FFFFFF;
+  font-size: 14px;
+  font-weight: 700;
+}}
+.fs-q:not(:has(.fs-q-num)) {{ margin: 8px 0 10px 0; }}
+.fs-q:not(:has(.fs-q-num)) p.fs-q-text {{ font-size: 16px; }}
+@media (min-width: 900px) {{
+  .fs-q:has(.fs-q-num) {{ margin-left: -40px; }}
+}}
+p.fs-q-text {{
+  margin: 0;
+  font-size: 19px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: {TEXT};
+}}
+p.fs-q-why {{
+  margin: 4px 0 0 0;
+  font-size: 14px;
+  line-height: 1.4;
+  color: {MUTED};
+  max-width: 600px;
+}}
+p.fs-farm-confirm {{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: 15px;
+  color: {TEXT};
+}}
+.fs-tick {{
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #EFF6ED;
+  color: {PRIMARY};
+  font-weight: 700;
+  font-size: 13px;
+}}
+
+/* Farming-year calendar */
+p.fs-year-title {{
+  margin: 22px 0 8px 0;
   font-size: 15px;
   font-weight: 600;
   color: {TEXT};
 }}
-.fs-farm-q {{
-  margin: 0 0 4px 0;
-  font-size: 15px;
-  line-height: 1.45;
-  color: {TEXT};
-  max-width: 640px;
+.fs-year {{ margin: 0 0 6px 0; }}
+.fs-year-row {{
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
 }}
-.fs-farm-why {{
-  margin: 0 0 12px 0;
-  font-size: 13px;
-  line-height: 1.4;
+.fs-year--labelled .fs-year-row {{ grid-template-columns: 50px 1fr; }}
+.fs-year-lab {{ font-size: 12px; color: {MUTED}; }}
+.fs-year-track {{
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 2px;
+}}
+.fs-year-head .fs-year-track span {{
+  font-size: 11px;
   color: {MUTED};
-  max-width: 640px;
+  text-align: center;
 }}
-.fs-farm-confirm {{
-  margin: 0 0 8px 0;
-  font-size: 14px;
+.fs-year-seg {{
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  height: 34px;
+  padding: 0 8px;
+  border-radius: 6px;
+  overflow: hidden;
+}}
+.fs-year-seg span {{
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 13px;
+  font-weight: 600;
   color: {TEXT};
+}}
+.fs-year-seg.is-bare span {{ font-weight: 400; color: {MUTED}; }}
+.fs-year--compact {{ margin: 8px 0 10px 0; }}
+.fs-year--compact .fs-year-row {{ gap: 6px; margin-bottom: 3px; }}
+.fs-year--compact.fs-year--labelled .fs-year-row {{ grid-template-columns: 42px 1fr; }}
+.fs-year--compact .fs-year-lab {{ font-size: 11px; }}
+.fs-year--compact .fs-year-head .fs-year-track span {{ font-size: 10px; }}
+.fs-year--compact .fs-year-seg {{ height: 22px; padding: 0 6px; border-radius: 4px; }}
+.fs-year--compact .fs-year-seg span {{ font-size: 11px; }}
+.fs-year-legend {{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: {MUTED};
+}}
+.fs-year-legend i {{
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin: 0 6px -2px 0;
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.1);
+}}
+
+/* Goal cards and the ranking mix bar */
+p.fs-goal-name {{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: {TEXT};
+}}
+.fs-goal-name i {{
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}}
+p.fs-goal-q {{
+  margin: 4px 0 0 0;
+  min-height: 2.7em;
+  font-size: 13.5px;
+  line-height: 1.35;
+  color: {MUTED};
+}}
+.fs-mix {{ margin: 18px 0 4px 0; }}
+p.fs-mix-title {{
+  margin: 0 0 8px 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: {TEXT};
+}}
+.fs-mix-bar {{
+  display: flex;
+  gap: 2px;
+  height: 18px;
+  border-radius: 9px;
+  overflow: hidden;
+}}
+.fs-mix-seg {{ min-width: 6px; }}
+.fs-mix-legend {{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  margin-top: 8px;
+  font-size: 13px;
+  color: {TEXT};
+}}
+.fs-mix-legend i {{
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 6px;
+  border-radius: 50%;
 }}
 .fs-farm-slot-label {{
   margin: 0 0 6px 0;
@@ -459,16 +683,6 @@ div[data-testid="stCheckbox"] label {{
   font-size: 12px;
   font-weight: 400;
   color: {MUTED};
-}}
-.fs-farm-why--tight {{
-  margin: 2px 0 0 0;
-  min-height: 2.8em;
-}}
-.fs-farm-goal-name {{
-  margin: 14px 0 2px 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: {TEXT};
 }}
 .fs-step {{
   display: inline;

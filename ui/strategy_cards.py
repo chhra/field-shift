@@ -19,6 +19,7 @@ from fieldshift.models import ScoreSet, StrategyCard
 from ui.charts import scores_bar
 from ui.source_caption import source_caption
 from ui.theme import PRIMARY, SCORE_COLORS
+from ui.year_strip import rows_from_sequence, year_strip_html
 
 _TIER_ORDER = ("baseline", "best_fit", "worth_considering", "not_suitable")
 
@@ -294,6 +295,7 @@ def _render_one_card(
   <p class="fs-tier-kicker">{html.escape(kicker)}</p>
   {badge}
   <p class="fs-strat-title">{html.escape(title)}</p>
+  {year_strip_html(rows_from_sequence(card.sequence), compact=True)}
   <p class="fs-tier-reason">{html.escape(sentence)}</p>
   {flags}
   <div class="fs-overall">

@@ -225,6 +225,48 @@ TWO_YEAR_HELP = (
 )
 MONTHS_EXPANDER_LABEL = "Adjust months"
 
+# Field page: one question per input, one short reason line under it.
+QUESTIONS: dict[str, tuple[str, str]] = {
+    "field": (
+        "Is this your field?",
+        "Satellites read this outline. Redraw it on the Home page if it is wrong.",
+    ),
+    "crops": (
+        "What do you grow in each season?",
+        "Seasons come from satellites. Every option is compared with what you grow now.",
+    ),
+    "water": (
+        "Do you water this field, or rely on rain?",
+        "Rain-only fields are not offered crops that need irrigation all season.",
+    ),
+    "soil": (
+        "What does your soil feel like when moist?",
+        "Rub some between your fingers. Soil type sets how much rain the ground holds.",
+    ),
+    "goals": (
+        "What matters to you?",
+        "Answer each question. The options below re-rank as you tap.",
+    ),
+}
+
+WATER_TILES: dict[str, str] = {
+    "rain_only": ":material/rainy: Rain only",
+    "some_irrigation": ":material/water_drop: Some irrigation",
+    "fully_irrigated": ":material/waves: Fully irrigated",
+    "not_sure": ":material/help: Not sure",
+}
+
+SOIL_TILES: dict[str, str] = {
+    "sandy": "Sandy · gritty",
+    "loamy": "Loamy · a mix",
+    "silty": "Silty · like flour",
+    "clay": "Clay · sticky",
+    "not_sure": "Not sure",
+}
+
+# Goal questions are yes/no, so the three levels read as answers.
+GOAL_REPLIES: dict[int, str] = {0: "No", 1: "Yes", 2: "A lot"}
+
 IMPORTANCE_LABELS: dict[int, str] = {
     0: "Not important",
     1: "Important",

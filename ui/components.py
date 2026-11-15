@@ -129,56 +129,49 @@ def season_pills(sequence: list[Any]) -> None:
     st.markdown('<div class="fs-pills">' + "".join(parts) + "</div>", unsafe_allow_html=True)
 
 
-def weights_bar(weights: dict[str, float]) -> None:
-    """Tiny horizontal bar of live priority weights."""
-    import plotly.graph_objects as go
-
-    labels = {
-        "water": "Water",
-        "forage": "Forage",
-        "nitrogen": "Nitrogen",
-        "erosion": "Erosion",
-        "organic_matter": "Organic matter",
-        "market": "Market",
-    }
-    keys = list(weights.keys())
-    top = max([weights[k] for k in keys] + [0.01])
+def question(num: int | None, text: str, why: str | None = None) -> None:
+    """Farmer question: the question is the heading, one reason line below."""
+    why_html = f'<p class="fs-q-why">{html.escape(why)}</p>' if why else ""
+    num_html = (
+        f'<span class="fs-q-num" aria-hidden="true">{num}</span>' if num is not None else ""
+    )
     st.markdown(
-        '<p class="fs-farm-slot-label"><strong>How much each goal counts in the '
-        "ranking</strong></p>",
+        f'<div class="fs-q">{num_html}'
+        f'<div><p class="fs-q-text">{html.escape(text)}</p>{why_html}</div></div>',
         unsafe_allow_html=True,
     )
-    fig = go.Figure(
-        go.Bar(
-            x=[weights[k] for k in keys],
-            y=[labels.get(k, k) for k in keys],
-            orientation="h",
-            marker_color=[SCORE_COLORS.get(k, PRIMARY) for k in keys],
-            text=[f"{weights[k]:.0%}" for k in keys],
-            textposition="outside",
-            cliponaxis=False,
-            hovertemplate="%{y}: %{x:.0%}<extra></extra>",
-        )
+
+
+_MIX_LABELS = {
+    "water": "Water",
+    "forage": "Animal feed",
+    "nitrogen": "Nitrogen",
+    "erosion": "Erosion",
+    "organic_matter": "Organic matter",
+    "market": "Market",
+}
+
+
+def goal_mix_bar(weights: dict[str, float]) -> None:
+    """One stacked bar: each goal's share of the ranking, in its score colour."""
+    keys = [k for k in weights if weights[k] > 0]
+    segs = "".join(
+        f'<div class="fs-mix-seg" style="flex:{weights[k]:.4f};'
+        f'background:{SCORE_COLORS.get(k, PRIMARY)}" '
+        f'title="{_MIX_LABELS.get(k, k)} {weights[k]:.0%}"></div>'
+        for k in keys
     )
-    fig.update_layout(
-        height=170,
-        margin={"l": 104, "r": 36, "t": 4, "b": 4},
-        xaxis={"range": [0, top * 1.2], "visible": False},
-        yaxis={"autorange": "reversed"},
-        plot_bgcolor="rgba(0,0,0,0)",
-        paper_bgcolor="rgba(0,0,0,0)",
-        showlegend=False,
-        font={
-            "family": "Source Sans 3, Helvetica, Arial, sans-serif",
-            "size": 12,
-            "color": TEXT,
-        },
+    legend = "".join(
+        f'<span><i style="background:{SCORE_COLORS.get(k, PRIMARY)}"></i>'
+        f"{_MIX_LABELS.get(k, k)} <strong>{weights[k]:.0%}</strong></span>"
+        for k in keys
     )
-    st.plotly_chart(
-        fig,
-        use_container_width=True,
-        config={"displayModeBar": False},
-        key="goal-weights-bar",
+    summary = ", ".join(f"{_MIX_LABELS.get(k, k)} {weights[k]:.0%}" for k in keys)
+    st.markdown(
+        f'<div class="fs-mix"><p class="fs-mix-title">Your answers shape the ranking like this</p>'
+        f'<div class="fs-mix-bar" role="img" aria-label="{html.escape(summary)}">{segs}</div>'
+        f'<div class="fs-mix-legend">{legend}</div></div>',
+        unsafe_allow_html=True,
     )
 
 
@@ -251,9 +244,10 @@ __all__ = [
     "demo_field_card",
     "demo_field_cards",
     "fact_chips",
+    "goal_mix_bar",
     "hero",
+    "question",
     "recommendation_banner",
     "season_pills",
     "section",
-    "weights_bar",
 ]
