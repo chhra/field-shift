@@ -6,11 +6,13 @@ NASA Space Apps Challenge 2026
 
 WHAT THIS FILE DOES
 -------------------
-It takes four things:
-  1. the farm's climate        (from NASA POWER data, prepared by nasa_data.py)
+It takes five things:
+  1. the farm's climate        (from NASA POWER data, see INPUT FILES below)
   2. the crop table            (EcoCrop climate + UK practices: what each crop needs and offers)
   3. the farmer's rotation     (e.g. winter wheat -> maize -> winter barley)
-  4. the farmer's priorities   (protect soil, save water, fertility, income)
+  4. the farmer's priorities   (the six in the challenge brief: water use, forage value,
+                               nitrogen fixing, erosion reduction, organic matter, market)
+  5. the farmer's field        (water source: rain only or irrigated; soil type)
 
 and returns 3 crop rotations:
   - the farmer's CURRENT rotation, with its problems explained
@@ -110,6 +112,36 @@ SPRING_FROST_CHECK_PCT = 25  # frost below the growing kill temperature after so
 # Candidate rotations (see candidates()): the model may make the rotation up to
 # 2 years longer by adding break crops, but never longer than this.
 MAX_ROTATION_YEARS = 5
+
+# -----------------------------------------------------------------------------
+# FARMER INPUTS: water source and soil type
+# The answer options are the same as on the app's Field page
+# (fieldshift/engine/inputs_config.py), so the two can be connected directly.
+# The point values below are our own approximate judgement: check with an agronomist.
+# -----------------------------------------------------------------------------
+WATER_SOURCES = {
+    "rain_only": "Rain only",
+    "some_irrigation": "Some irrigation (only in dry spells)",
+    "fully_irrigated": "Fully irrigated",
+    "not_sure": "Not sure",                 # treated as rain only, and reported as a gap
+}
+SOIL_TYPES = {
+    "sandy": "Sandy", "loamy": "Loamy", "silty": "Silty", "clay": "Clay",
+    "not_sure": "Not sure",                 # no soil rules applied, and reported as a gap
+}
+
+# Water points for a thirsty crop (water_need = high) when summers are getting drier,
+# and for a drought-tolerant crop. Irrigation removes the problem, so it removes the points.
+THIRSTY_CROP_POINTS = {"rain_only": -3, "not_sure": -3, "some_irrigation": -1, "fully_irrigated": 0}
+DROUGHT_TOLERANT_POINTS = {"rain_only": 2, "not_sure": 2, "some_irrigation": 2, "fully_irrigated": 1}
+
+# Soil points
+BARE_WET_MONTH_POINTS = -2          # per bare month in the wet season (any soil)
+LIGHT_SOIL_BARE_WET_POINTS = -3     # ...on sandy or silty soil, which washes and blows away more easily
+LIGHT_SOILS = ("sandy", "silty")
+SANDY_THIRSTY_CROP_POINTS = -1      # sandy soil stores about half the water of a loam (FAO-56 Table 19)
+CLAY_WET_HARVEST_POINTS = -2        # harvesting on clay in the wet months compacts and smears the soil
+CLAY_DEEP_ROOT_POINTS = 1           # extra: deep roots matter most on heavy, slow-draining clay
 
 # EcoCrop column codes -> the names used in this model.
 # ktmpr is the killing temperature while the crop is dormant (winter), which is the
@@ -276,6 +308,13 @@ def is_perennial(c):
     """True for leys (grass, clover). They stay in the ground for several years,
     so in crop_practices.csv their harvest_month is 0 and they never leave the soil bare."""
     return int(c["harvest_month"]) == 0
+
+
+def rotation_years(names, crops):
+    """How many years a rotation lasts. Most crops take one year, but a ley
+    stays in the ground for several (the "years" column in crop_practices.csv),
+    so 4 crops with a 3-year ley make a 6-year rotation."""
+    return sum(int(crops[n]["years"]) for n in names)
 
 
 def is_winter_sown(c):
@@ -601,7 +640,8 @@ def canonical(seq, current):
 # STEPS B + C: SCORING A ROTATION
 # =============================================================================
 
-def score(rotation, farm, crops, prio, successors, current=None, climate=None, suit=None):
+def score(rotation, farm, crops, prio, successors, current=None, climate=None, suit=None,
+          water="rain_only", soil="not_sure"):
     """Score one rotation and explain the score.
 
     Points are collected in separate "buckets" (soil, water, fertility...), so we
@@ -618,17 +658,22 @@ def score(rotation, farm, crops, prio, successors, current=None, climate=None, s
         rotation    list of (main crop, cover crop or None) steps
         farm        the farm's climate (same keys as FAKE_FARM)
         crops       from load_crops()
-        prio        farmer priorities, e.g. {"soil": 3, "water": 2, "fertility": 2, "income": 2}
+        prio        farmer priorities, 0 (doesn't matter) to 3 (high), e.g.
+                    {"soil": 3, "water": 2, "fertility": 2, "income": 2,
+                     "forage": 0, "organic_matter": 2}
         successors  from load_successors()
         current     the farmer's current crops (to penalise big changes); None to skip
         climate     crop name -> crop_climate() result; None to skip the heat and
                     daily-frost rules (the simple frost check in suitability() is used)
         suit        crop name -> suitability() result, worked out once in recommend()
                     so it isn't recomputed for every rotation; None to compute here
+        water       the farmer's water source: a key of WATER_SOURCES
+        soil        the farmer's soil type: a key of SOIL_TYPES
     """
-    pts = {"soil": 0, "water": 0, "fertility": 0, "sequence": 0,
-           "income": 0, "climate": 0, "change": 0}
+    pts = {"soil": 0, "water": 0, "fertility": 0, "forage": 0, "organic_matter": 0,
+           "sequence": 0, "income": 0, "climate": 0, "change": 0}
     reasons, benefits, risks, checks = [], [], [], []
+    fitted_covers = []                        # cover crops that fit their gap (for organic matter)
     mains = [crops[m] for m, _ in rotation]   # the main crops' rows from load_crops()
     names = [m for m, _ in rotation]          # just the main crop names
 
@@ -655,12 +700,17 @@ def score(rotation, farm, crops, prio, successors, current=None, climate=None, s
         bare = [m for m in g["gap"] if m not in g["covered"]]
         bare_wet = [m for m in bare if m in farm["wet_months"]]
         if bare_wet:
-            pts["soil"] -= 2 * len(bare_wet)          # -2 per bare wet month
+            # light soils (sandy, silty) wash and blow away more easily: a bigger penalty
+            light = soil in LIGHT_SOILS
+            per_month = LIGHT_SOIL_BARE_WET_POINTS if light else BARE_WET_MONTH_POINTS
+            pts["soil"] += per_month * len(bare_wet)
             risks.append(f"Soil is bare in {month_names(bare_wet)} after {g['after']}, "
-                         f"the wettest months here: erosion risk.")
+                         f"the wettest months here: erosion risk"
+                         + (f", higher on {soil} soil." if light else "."))
 
         # A cover crop in this gap
         if g["cover"] and g["covered"]:
+            fitted_covers.append(g["cover"])
             # ...but first check it doesn't clash with neighbouring crops
             penalty, why = cover_conflict(g["cover"], g["before"], names, crops, g["after"])
             if penalty:
@@ -675,6 +725,17 @@ def score(rotation, farm, crops, prio, successors, current=None, climate=None, s
                 if crops[g["cover"]]["n_fixing"] == "yes":   # legume covers add nitrogen too
                     pts["fertility"] += 1
                     benefits.append(f"{g['cover']} also adds nitrogen.")
+
+    # -------------------------------------------------------------------------
+    # RULE B2b: a ley keeps the soil covered all year
+    # A cover crop earns +3 for protecting the soil through one wet season. A ley
+    # does the same every year it is in the ground, so it earns +3 per year.
+    # -------------------------------------------------------------------------
+    for c in mains:
+        if c["role"] == "forage" and is_perennial(c):
+            pts["soil"] += 3 * int(c["years"])
+            benefits.append(f"{c['crop']} keeps the soil covered all year for "
+                            f"{int(c['years'])} years: no bare soil in the wet months.")
 
     # -------------------------------------------------------------------------
     # RULE B3: a nitrogen-fixing crop (legume)
@@ -712,11 +773,13 @@ def score(rotation, farm, crops, prio, successors, current=None, climate=None, s
     # RULE B4b: how often a sensitive crop family comes back to the same field
     # The successor matrix only checks NEIGHBOURING crops. This rule checks the
     # whole rotation: e.g. peas every 2 years is far too often (5+ is advised).
-    #   every = rotation length / number of times the family appears
+    #   every = rotation length in YEARS / number of times the family appears
     # Example: a 4-year rotation with peas twice -> peas every 2 years.
+    # The length is in years, not crops: a 3-year ley makes the rotation 2 years
+    # longer than its number of crops (see rotation_years).
     # Legume and brassica cover crops count too, because they carry the same diseases.
     # -------------------------------------------------------------------------
-    years = len(names)
+    years = rotation_years(names, crops)
     fams = [crops[n]["family"] for n in names]
     for _, cv in rotation:
         if cv and crops[cv]["family"] in ("legume", "brassica"):
@@ -749,30 +812,111 @@ def score(rotation, farm, crops, prio, successors, current=None, climate=None, s
     # Thirsty crops lose points; drought-tolerant or low-water crops gain points.
     # Each crop gets ONE water result (the strongest that applies), so a crop
     # that is both drought-tolerant and low-water isn't rewarded twice.
+    #
+    # The farmer's WATER SOURCE changes the points (THIRSTY_CROP_POINTS):
+    #   rain only        thirsty crop -3   (nothing to fall back on in a dry summer)
+    #   some irrigation  thirsty crop -1   (dry spells can be covered)
+    #   fully irrigated  thirsty crop  0   (but flagged: it depends on the irrigation)
     # -------------------------------------------------------------------------
     for c in mains if farm["summer_drying"] else []:
         if c["water_need"] == "high":
-            pts["water"] -= 3
-            risks.append(f"{c['crop']} needs a lot of water and summers here are getting drier.")
+            p = THIRSTY_CROP_POINTS[water]
+            pts["water"] += p
+            if water == "some_irrigation":
+                risks.append(f"{c['crop']} needs a lot of water and summers here are getting "
+                             f"drier: it will rely on your irrigation in dry spells.")
+            elif p:
+                risks.append(f"{c['crop']} needs a lot of water and summers here are getting drier.")
         elif c["drought_tolerance"] == "high":
-            pts["water"] += 2
+            pts["water"] += DROUGHT_TOLERANT_POINTS[water]
             benefits.append(f"{c['crop']} copes well with dry spells.")
         elif c["water_need"] == "low":
             pts["water"] += 1
             benefits.append(f"{c['crop']} has a low water need.")
 
+    # Full irrigation takes the drought risk away, but the crop now depends on it.
+    thirsty = [c["crop"] for c in mains if c["water_need"] == "high"]
+    if thirsty and water == "fully_irrigated":
+        checks.append(f"{', '.join(thirsty)} {'depends' if len(thirsty) == 1 else 'depend'} "
+                      f"on irrigation all season: check your "
+                      f"abstraction licence, water supply in dry years and the cost.")
+
+    # SOIL: sandy soil stores about half the water of a loam, so a thirsty crop
+    # runs short sooner in the dry months, unless the field is fully irrigated.
+    if soil == "sandy" and water != "fully_irrigated":
+        for name in thirsty:
+            pts["water"] += SANDY_THIRSTY_CROP_POINTS
+            risks.append(f"{name} needs a lot of water, and sandy soil holds little of it "
+                         f"through the dry months ({month_names(farm['dry_months'])}).")
+
     # -------------------------------------------------------------------------
     # RULE B7: deep-rooted crops improve soil structure and drainage
+    # (worth an extra point on clay, which is heavy and drains slowly)
     # -------------------------------------------------------------------------
     deep = [c["crop"] for c in mains if c["root_depth"] == "deep"]
     if deep:
-        pts["soil"] += 1
-        benefits.append(f"Deep roots of {', '.join(deep)} improve soil structure and drainage.")
+        pts["soil"] += 1 + (CLAY_DEEP_ROOT_POINTS if soil == "clay" else 0)
+        benefits.append(f"Deep roots of {', '.join(deep)} improve soil structure and drainage"
+                        + (", which matters most on clay." if soil == "clay" else "."))
 
     # -------------------------------------------------------------------------
-    # RULE B8: income - average market value of the crops (0 to 3), times 3
+    # RULE B7b: harvesting on clay in the wet months
+    # Heavy machinery on wet clay compacts and smears it, and the damage lasts
+    # into the next crop. Applies to crops harvested in the farm's wet months.
     # -------------------------------------------------------------------------
-    pts["income"] += sum(LEVEL[str(c["market_value"])] for c in mains) / len(mains) * 3
+    if soil == "clay":
+        for c in mains:
+            if not is_perennial(c) and int(c["harvest_month"]) in farm["wet_months"]:
+                pts["soil"] += CLAY_WET_HARVEST_POINTS
+                risks.append(f"{c['crop']} is harvested in {MONTHS[int(c['harvest_month']) - 1]}, "
+                             f"a wet month here: on clay this risks compaction and soil damage.")
+
+    # Missing answers are information gaps: say so, don't guess silently.
+    if water == "not_sure":
+        reasons.append("Water source not given: scored as rain only (information gap).")
+    if soil == "not_sure":
+        reasons.append("Soil type not given: soil-specific rules were not applied (information gap).")
+
+    # -------------------------------------------------------------------------
+    # RULE B8: income - average market value per YEAR (0 to 3), times 3
+    # (a 3-year ley counts three times, because it earns its value for three years)
+    # -------------------------------------------------------------------------
+    pts["income"] += round(
+        sum(LEVEL[str(c["market_value"])] * int(c["years"]) for c in mains) / years * 3, 1)
+
+    # -------------------------------------------------------------------------
+    # RULE B8b: forage - how much of the rotation can feed livestock
+    # Average forage value per YEAR (0 to 3), times 3: a 3-year ley counts three
+    # times. Only matters if the farmer gives forage a priority above 0, i.e. has
+    # livestock or a forage buyer (see STEP C); otherwise it scores but weighs nothing.
+    # -------------------------------------------------------------------------
+    pts["forage"] += round(
+        sum(LEVEL[str(c["forage_value"])] * int(c["years"]) for c in mains) / years * 3, 1)
+    wants_forage = prio.get("forage", 0) > 0
+    feed = [c["crop"] for c in mains if LEVEL[str(c["forage_value"])] >= 2]
+    if wants_forage and feed:
+        benefits.append(f"{', '.join(feed)} can feed livestock (grazing, silage or hay).")
+    elif wants_forage:
+        reasons.append("No forage crop in the rotation, although animal feed matters to you.")
+
+    # -------------------------------------------------------------------------
+    # RULE B8c: organic matter - roots and residues returned to the soil
+    # Average organic-matter level per YEAR (0 to 3), times 3. A cover crop that
+    # fits its gap adds half a year's worth, because it only grows for part of one.
+    # Leys score highest: years of roots and no ploughing.
+    # -------------------------------------------------------------------------
+    om = sum(LEVEL[str(c["organic_matter"])] * int(c["years"]) for c in mains)
+    om += sum(LEVEL[str(crops[cv]["organic_matter"])] * 0.5 for cv in fitted_covers)
+    pts["organic_matter"] += round(om / years * 3, 1)
+    builders = [c["crop"] for c in mains if c["organic_matter"] == "high"]
+    if builders:
+        benefits.append(f"{', '.join(builders)} builds organic matter: years of roots "
+                        f"and residues with no ploughing.")
+    if fitted_covers:
+        benefits.append("Cover crops add organic matter between the main crops.")
+    if om / years < 1.5:
+        reasons.append("Little crop residue returns to the soil in this rotation: "
+                       "organic matter may fall over time.")
 
     # -------------------------------------------------------------------------
     # RULE B9: climate fit (Step A for every crop in the rotation)
@@ -844,20 +988,29 @@ def score(rotation, farm, crops, prio, successors, current=None, climate=None, s
     # -------------------------------------------------------------------------
     if legumes:
         checks.append("Check the field's history of legume diseases and local markets for pulses.")
-    if any(c["role"] == "forage" for c in mains):
-        checks.append("A ley only pays if there is livestock or a local forage buyer.")
-    checks.append("Check soil type, drainage and equipment with your agronomist.")
+    if any(c["role"] == "forage" for c in mains) and not wants_forage:
+        checks.append("A ley only pays if there is livestock or a local forage buyer "
+                      "(you gave animal feed no priority).")
+    checks.append("Check soil type, drainage and equipment with your agronomist." if soil == "not_sure"
+                  else "Check drainage, soil pH and equipment with your agronomist.")
 
     # -------------------------------------------------------------------------
     # STEP C: weight the buckets by the farmer's priorities and add them up.
-    # Soil, water, fertility and income use the farmer's sliders (1-3).
+    # The six farmer priorities from the challenge brief each weight one bucket:
+    #   water use -> water            nitrogen fixing -> fertility
+    #   erosion reduction -> soil     market suitability -> income
+    #   forage value -> forage        organic matter improvement -> organic_matter
+    # Each is 0 (doesn't matter) to 3 (high). Forage and organic matter count 0
+    # if the caller leaves them out, so older calls give the same scores as before.
     # "sequence" (pests and diseases) always counts double: it matters on every farm.
     # -------------------------------------------------------------------------
     weights = {"soil": prio["soil"], "water": prio["water"], "fertility": prio["fertility"],
-               "income": prio["income"], "sequence": 2, "climate": 1, "change": 1}
+               "income": prio["income"], "forage": prio.get("forage", 0),
+               "organic_matter": prio.get("organic_matter", 0),
+               "sequence": 2, "climate": 1, "change": 1}
     total = round(sum(pts[k] * weights[k] for k in pts), 1)
 
-    return {"score": total, "points": pts, "reasons": reasons,
+    return {"score": total, "years": years, "points": pts, "reasons": reasons,
             "benefits": benefits, "risks": risks, "checks": checks}
 
 
@@ -906,8 +1059,12 @@ def add_covers(rotation, farm, crops, covers=None):
     return out
 
 
-def candidates(current, farm, crops):
+def candidates(current, farm, crops, suggest_leys=True):
     """Make all the rotations worth considering.
+
+    suggest_leys=False stops the model adding NEW leys (grass, clover): a ley only
+    pays with livestock or a forage buyer, so recommend() turns this off when the
+    farmer gives animal feed no priority. A ley already in the rotation stays.
 
     Starting from the farmer's current rotation, it creates:
       A. same length:   every rotation that swaps ONE or TWO crops
@@ -917,7 +1074,8 @@ def candidates(current, farm, crops):
     using any cash or forage crop that can grow in this climate. Break crops are
     the non-cereals (legumes, brassicas, potatoes, beet, leys, vegetables): they
     are what a longer rotation is for, e.g. room for peas only every 5 years.
-    Rotations never get longer than MAX_ROTATION_YEARS.
+    Rotations never get longer than MAX_ROTATION_YEARS, counted in years (a ley
+    takes 3), unless the farmer's own rotation is already longer.
 
     Crops marked suggest = "no" in crop_practices.csv (fruit, and crops with no
     EcoCrop data) are never swapped in, but can still be in the current rotation.
@@ -926,6 +1084,7 @@ def candidates(current, farm, crops):
     """
     swaps = [n for n, c in crops.items()
              if c["role"] in ("cash", "forage") and c["suggest"] == "yes"
+             and (suggest_leys or c["role"] != "forage")
              and suitability(c, farm)[0] in ("ideal", "possible")]
     breaks = [n for n in swaps if crops[n]["family"] != "cereal"]
     n = len(current)
@@ -969,6 +1128,11 @@ def candidates(current, farm, crops):
     # the same cycle started in a different year is the same rotation: keep one
     seqs = {canonical(s, current) for s in seqs}
 
+    # the cap is in YEARS: swapping in or adding a 3-year ley can push a rotation
+    # past MAX_ROTATION_YEARS, so drop those (never below the farmer's own length)
+    cap = max(MAX_ROTATION_YEARS, rotation_years(current, crops))
+    seqs = {s for s in seqs if rotation_years(s, crops) <= cap}
+
     covers = usable_covers(farm, crops)
     cands = []
     for seq in sorted(seqs):   # sorted, so the order is the same every run
@@ -980,28 +1144,41 @@ def candidates(current, farm, crops):
     return cands
 
 
-def describe(rotation):
+def describe(rotation, crops=None):
     """Turn a rotation into readable text:
-    "Winter wheat (+ Rye (cover)) → Spring oats → Spring peas"."""
-    return " → ".join(m + (f" (+ {c})" if c else "") for m, c in rotation)
+    "Winter wheat (+ Rye (cover)) → Red clover ley (3 years) → Spring peas".
+    Pass `crops` to show how long multi-year crops stay."""
+    def step(m, c):
+        yrs = int(crops[m]["years"]) if crops else 1
+        return m + (f" ({yrs} years)" if yrs > 1 else "") + (f" (+ {c})" if c else "")
+    return " → ".join(step(m, c) for m, c in rotation)
 
 
-def recommend(current, farm, priorities, crops, successors, weather=None, warming_c=0.0):
+def recommend(current, farm, priorities, crops, successors, weather=None, warming_c=0.0,
+              water="rain_only", soil="not_sure"):
     """MAIN FUNCTION - this is what the web page (app.py) calls.
 
     Arguments:
         current     the farmer's current rotation, e.g. ["Winter wheat", "Maize", "Winter barley"]
         farm        the farm's climate, from load_farm() (or FAKE_FARM for testing)
-        priorities  e.g. {"soil": 3, "water": 2, "fertility": 2, "income": 2}  (1 low ... 3 high)
+        priorities  the six priorities in the brief, each 0 (doesn't matter) to 3 (high):
+                    {"soil": 3, "water": 2, "fertility": 2, "income": 2,
+                     "forage": 0, "organic_matter": 2}
+                    soil = erosion reduction, fertility = nitrogen fixing, income = market;
+                    forage and organic_matter may be left out (then they count 0)
         crops       from load_crops()
         successors  from load_successors()
         weather     daily NASA data from load_weather(); None skips heat stress and
                     the daily frost index
         warming_c   what-if slider: adds this many °C to the farm's temperatures
+        water       the farmer's water source: "rain_only", "some_irrigation",
+                    "fully_irrigated" or "not_sure" (see WATER_SOURCES)
+        soil        the farmer's soil type: "sandy", "loamy", "silty", "clay" or
+                    "not_sure" (see SOIL_TYPES)
 
     Returns a list of 3 dictionaries (current, Option A, Option B), each with:
-        name, rotation (text), crops (list of steps), score, points (per bucket),
-        benefits, risks, reasons, checks
+        name, rotation (text), crops (list of steps), years (rotation length),
+        score, points (per bucket), benefits, risks, reasons, checks
     If there aren't enough alternatives, the list is shorter (current + A, or
     just current) and the last item's "reasons" says why.
 
@@ -1016,6 +1193,10 @@ def recommend(current, farm, priorities, crops, successors, weather=None, warmin
                          f"Valid names: {', '.join(sorted(crops))}")
     if not current:
         raise ValueError("The current rotation is empty: enter at least one crop.")
+    if water not in WATER_SOURCES:
+        raise ValueError(f"Unknown water source {water!r}. Valid: {', '.join(WATER_SOURCES)}")
+    if soil not in SOIL_TYPES:
+        raise ValueError(f"Unknown soil type {soil!r}. Valid: {', '.join(SOIL_TYPES)}")
 
     # 0. What-if warming: shift the farm's temperatures, and compute each crop's
     #    heat and frost indices ONCE (not once per candidate rotation)
@@ -1030,16 +1211,19 @@ def recommend(current, farm, priorities, crops, successors, weather=None, warmin
 
     # 1. Score the farmer's current rotation (no cover crops), to compare against
     current_rot = [(c, None) for c in current]
-    cur = {"name": "Current rotation", "rotation": describe(current_rot), "crops": current_rot,
-           **score(current_rot, farm, crops, priorities, successors, current, climate, suit)}
+    cur = {"name": "Current rotation", "rotation": describe(current_rot, crops), "crops": current_rot,
+           **score(current_rot, farm, crops, priorities, successors, current, climate, suit,
+                   water, soil)}
 
     # 2. Score every candidate rotation (skipping the current one, in any starting year)
     scored = []
-    for rot in candidates(current, farm, crops):
+    #    New leys are only suggested if the farmer gives animal feed a priority.
+    for rot in candidates(current, farm, crops, suggest_leys=priorities.get("forage", 0) > 0):
         if not any(cv for _, cv in rot) and same_cycle([m for m, _ in rot], current):
             continue
-        scored.append({"rotation": describe(rot), "crops": rot,
-                       **score(rot, farm, crops, priorities, successors, current, climate, suit)})
+        scored.append({"rotation": describe(rot, crops), "crops": rot,
+                       **score(rot, farm, crops, priorities, successors, current, climate, suit,
+                               water, soil)})
 
     # 3. Sort from highest to lowest score.
     #    If two rotations have the SAME score, prefer the one with fewer changes
@@ -1090,12 +1274,19 @@ if __name__ == "__main__":
 
     # Change these to try different farmers:
     current = ["Winter wheat", "Maize", "Winter barley"]                  # names must match crop_practices.csv
-    priorities = {"soil": 3, "water": 2, "fertility": 2, "income": 2}   # 1 low, 2 normal, 3 high
+    # the six priorities: 0 doesn't matter, 1 low, 2 normal, 3 high
+    priorities = {"soil": 3, "water": 2, "fertility": 2, "income": 2,
+                  "forage": 0,             # 0 = no livestock and no forage buyer
+                  "organic_matter": 2}
     warming_c = 0.0                                                     # what-if: try 2.0
+    water = "rain_only"      # "rain_only", "some_irrigation", "fully_irrigated", "not_sure"
+    soil = "loamy"           # "sandy", "loamy", "silty", "clay", "not_sure"
+    print(f"Water source: {WATER_SOURCES[water]}   Soil type: {SOIL_TYPES[soil]}")
 
-    for r in recommend(current, farm, priorities, crops, successors, weather, warming_c):
+    for r in recommend(current, farm, priorities, crops, successors, weather, warming_c,
+                       water, soil):
         print("=" * 80)
-        print(f"{r['name']}:  {r['rotation']}")
+        print(f"{r['name']} ({r['years']} years):  {r['rotation']}")
         print(f"Score: {r['score']}   {r['points']}")
         for label in ("benefits", "risks", "reasons", "checks"):
             for line in r[label]:
