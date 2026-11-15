@@ -83,7 +83,7 @@ CONTRAST_PAIRS: list[tuple[str, str, str, float]] = [
     ("text_on_sidebar", TEXT, SIDEBAR, 4.5),
 ]
 
-_THEME_VERSION = "select-caret-v1"
+_THEME_VERSION = "farm-plain-v1"
 
 
 def inject_nav_active(active_path: str) -> None:
@@ -395,6 +395,61 @@ p, .stMarkdown p {{
   margin: 0 0 24px 0;
   max-width: 640px;
   line-height: 1.5;
+}}
+
+/* About your farm — plain questions a farmer can answer */
+.fs-farm-banner {{
+  margin: 0 0 20px 0;
+  padding: 0 0 0 12px;
+  border-left: 3px solid {PRIMARY};
+  font-size: 14px;
+  line-height: 1.45;
+  color: {TEXT};
+  max-width: 640px;
+}}
+.fs-farm-step {{
+  margin: 28px 0 6px 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: {TEXT};
+}}
+.fs-farm-q {{
+  margin: 0 0 4px 0;
+  font-size: 15px;
+  line-height: 1.45;
+  color: {TEXT};
+  max-width: 640px;
+}}
+.fs-farm-why {{
+  margin: 0 0 12px 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: {MUTED};
+  max-width: 640px;
+}}
+.fs-farm-confirm {{
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  color: {TEXT};
+}}
+.fs-farm-slot-label {{
+  margin: 0 0 6px 0;
+  font-size: 14px;
+  color: {TEXT};
+  line-height: 1.35;
+}}
+.fs-farm-slot-meta {{
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  font-weight: 400;
+  color: {MUTED};
+}}
+.fs-farm-goal-name {{
+  margin: 8px 0 2px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: {TEXT};
 }}
 .fs-step {{
   display: inline;
