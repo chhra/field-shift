@@ -442,11 +442,17 @@ def field_options(field_id: str, body: FieldOptionsRequest) -> FieldOptions:
 @router.post("/analyze", response_model=AnalyzeResult)
 def analyze(body: AnalyzeRequest) -> AnalyzeResult:
     """Live Earth Engine + NASA POWER analysis (about a minute). Result id is 'custom'."""
-    init_ee()
     try:
+        init_ee()
         analyze_field(body.polygon, name=body.name)
-    except RuntimeError as exc:
-        raise HTTPException(503, str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(422, str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(503, str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001 — surface extract failures as 503, not a blank 500
+        raise HTTPException(
+            503,
+            f"Live analysis could not finish ({exc}). "
+            "Try again, or open the UK model / a demo field instead.",
+        ) from exc
     return AnalyzeResult(field_id="custom")

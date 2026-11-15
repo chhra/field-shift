@@ -247,7 +247,17 @@ export function AnalyzeField({ live, statusKnown }: { live: boolean; statusKnown
                 </p>
               </div>
             )}
-            {error && <p className={styles.error}>{error}</p>}
+            {error && (
+              <p className={styles.error} role="alert">
+                {error}
+              </p>
+            )}
+            {live && square?.in_uk && (
+              <p className="caption">
+                For a UK field you can also use <strong>Open the UK model here</strong> — that path
+                does not need a full live Earth Engine extract.
+              </p>
+            )}
           </div>
         </div>
 

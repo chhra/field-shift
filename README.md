@@ -17,9 +17,6 @@ packages `fieldshift/` (Field engine) and `team_model/` (UK rotation rules); the
 wraps them, it does not reimplement them. Routes: `/` (Home), `/field`, `/uk`,
 `/how-it-works`. Python **3.12** (see `.python-version`), Node **20+**.
 
-The Streamlit app (`app.py` + `views/`) is **legacy**: it still runs and shares the same
-presenters (`ui/plans.py`, `ui/year_strip.py`), but new UI work goes into `web/`.
-
 ## What it does
 
 - **Live NASA climate for any UK field.** Drop coordinates on the Home page and the
@@ -67,8 +64,6 @@ pip install -r api/requirements.txt      # engines + FastAPI
 
 # Optional: Earth Engine secrets (never commit)
 # place service account JSON at secrets/ee-key.json
-python tools/make_secrets.py          # local .streamlit/secrets.toml (path-based)
-python tools/print_cloud_secrets.py   # secrets/cloud_secrets.toml for Cloud copy-paste
 ```
 
 Run the API and the web app in two terminals:
@@ -82,8 +77,6 @@ cd web && npm install && npm run dev                     # http://localhost:3000
 The web app proxies `/api/*` to `FIELD_SHIFT_API_URL` (default `http://127.0.0.1:8000`).
 The API allows browser origins from `FIELD_SHIFT_WEB_ORIGINS` (default `http://localhost:3000`).
 Without Earth Engine secrets the demo fields still work; live field analysis is switched off.
-
-Legacy Streamlit UI: `pip install -r requirements.txt && streamlit run app.py` (port 8501).
 
 On Windows PowerShell the venv steps differ slightly:
 
@@ -100,15 +93,15 @@ cached data, and the UK model runs on the committed Rothamsted Broadbalk climate
 
 ```bash
 pip install -r requirements-dev.txt
-ruff check fieldshift ui views api scripts tests app.py
+ruff check fieldshift ui api scripts tests
 pytest                          # engines, presenters and API (FastAPI TestClient)
 cd web && npm run typecheck     # TypeScript
 ```
 
 The suite (`tests/`) covers the rule engine, the farmer-input bridge, the Earth Engine
-services, ET0 maths, Streamlit page smoke tests, the live UK-climate bounds and the
-web API. Run a single module with `pytest tests/test_team_model.py`, and use
-`PYTHONIOENCODING=utf-8` on Windows if console output trips on Unicode.
+services, ET0 maths, the live UK-climate bounds and the web API. Run a single module
+with `pytest tests/test_team_model.py`, and use `PYTHONIOENCODING=utf-8` on Windows if
+console output trips on Unicode.
 
 ### Data layer CLI (Phase 2)
 
@@ -155,32 +148,56 @@ See `data/processed/climate/station_vs_nasa_rain_summary.json`.
 
 ```
 api/                       # FastAPI layer over fieldshift + team_model
-web/                       # Next.js frontend (primary UI)
-app.py                     # Streamlit entry + top navigation (legacy)
-views/                     # Streamlit Home, Field, UK model, How it works
+web/                       # Next.js frontend
 fieldshift/                # global field engine (data, geo, models, services, engine)
 team_model/                # UK rule-based rotation model + live climate + app adapter
-ui/                        # shared presenters (plans, year strip) for Streamlit + API
+ui/                        # shared presenters (plans, year strip) used by the API
 scripts/                   # reproducible data-build scripts (climate, crops)
 data/raw/ , data/processed/# inputs as downloaded / script outputs
-tests/                     # pytest suite (engine, inputs, services, pages, API)
+tests/                     # pytest suite (engine, inputs, services, API)
 tools/                     # secrets + Earth Engine helpers
 ```
 
-## Deploy — Streamlit Community Cloud (legacy UI)
+## Deploy (Render API + Vercel web)
+
+Recommended split: **FastAPI on Render**, **Next.js on Vercel**. Demo Field / UK Broadbalk
+work without Earth Engine secrets. Live “Analyze this field” needs EE credentials on the API.
+
+### 1. Backend — Render
 
 1. Push this repo to GitHub.
-2. https://share.streamlit.io → **New app** · main file `app.py`.
-3. **Advanced settings → Secrets:** paste from `.streamlit/secrets.toml.example` (or
-   `secrets/cloud_secrets.toml` from `print_cloud_secrets.py`). Never commit real keys.
-4. Deploy. Without secrets → demo/mock mode.
+2. https://dashboard.render.com → **New** → **Blueprint** → select the repo (`render.yaml`).
+   Or **New Web Service** → Docker → Dockerfile path `Dockerfile.api`.
+3. After deploy, copy the API URL (e.g. `https://field-shift-api.onrender.com`).
+4. Optional env vars on the service:
+   - `FIELD_SHIFT_WEB_ORIGINS` — your Vercel URL (comma-separated if several)
+   - `EE_SERVICE_ACCOUNT` / `EE_PRIVATE_KEY_JSON` / `EE_PROJECT` — only for live analysis
 
-A `Dockerfile` and `docker-compose.yml` are included for container deploys, and
-`render.yaml` for Render. The UK model and its Broadbalk demo need no secrets and work
-in every deploy mode; only live Earth Engine field analysis needs the service account.
+Health check: `GET /api/health` → `{"status":"ok"}`.
 
-For the Next.js UI, host the FastAPI app and `web/` together (e.g. Railway or Render),
-or put `web/` on Vercel and point `FIELD_SHIFT_API_URL` at the API host.
+Free Render services sleep when idle; the first request after sleep can take ~30s.
+
+### 2. Frontend — Vercel
+
+```bash
+cd web
+npx vercel                  # link the project; set Root Directory to web/ if from monorepo
+```
+
+In the Vercel project **Settings → Environment Variables**:
+
+| Name | Value |
+| --- | --- |
+| `FIELD_SHIFT_API_URL` | `https://your-api.onrender.com` (no trailing slash) |
+
+Redeploy after setting the env var (rewrites are applied at build time).
+
+Open the Vercel URL. `/api/*` is proxied to the Render API.
+
+### 3. FortiGuard (NASA Space Apps judges)
+
+After the Vercel URL is live, submit it on the FortiGuard Web Filter Classification form
+(category: Education or Web-based Applications; Company Name: `N/A`).
 
 ## Limitations & cut list
 

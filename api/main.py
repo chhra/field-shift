@@ -16,9 +16,16 @@ app = FastAPI(
     "Wraps the fieldshift engine and the UK rotation model.",
 )
 
+_origins = [
+    o.strip()
+    for o in os.environ.get("FIELD_SHIFT_WEB_ORIGINS", "http://localhost:3000").split(",")
+    if o.strip()
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=os.environ.get("FIELD_SHIFT_WEB_ORIGINS", "http://localhost:3000").split(","),
+    allow_origins=_origins,
+    # Vercel production + preview deployments
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )

@@ -1,17 +1,22 @@
-# Render Blueprint — single Streamlit service (no FastAPI).
+# Render Blueprint — FastAPI backend for the Next.js web app on Vercel.
 services:
   - type: web
-    name: field-shift
-    runtime: python
+    name: field-shift-api
+    runtime: docker
     plan: free
-    buildCommand: pip install -r requirements.txt
-    startCommand: streamlit run app.py --server.port=$PORT --server.address=0.0.0.0
+    dockerfilePath: ./Dockerfile.api
+    dockerContext: .
+    healthCheckPath: /api/health
     envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.8"
+      # Comma-separated Vercel URL(s), e.g. https://field-shift.vercel.app
+      - key: FIELD_SHIFT_WEB_ORIGINS
+        sync: false
+      # Optional Earth Engine (live field analysis). Demos work without these.
       - key: EE_SERVICE_ACCOUNT
         sync: false
       - key: EE_PRIVATE_KEY_JSON
         sync: false
       - key: EE_PROJECT
         sync: false
-      - key: PYTHON_VERSION
-        value: "3.12.8"
