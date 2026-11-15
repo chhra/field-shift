@@ -83,7 +83,7 @@ CONTRAST_PAIRS: list[tuple[str, str, str, float]] = [
     ("text_on_sidebar", TEXT, SIDEBAR, 4.5),
 ]
 
-_THEME_VERSION = "nav-align-v4"
+_THEME_VERSION = "select-caret-v1"
 
 
 def inject_nav_active(active_path: str) -> None:
@@ -825,10 +825,22 @@ button[kind="primary"]:hover {{
   border-color: {FOCUS} !important;
 }}
 .stButton > button:focus-visible,
-input:focus-visible,
-[data-baseweb="select"] *:focus-visible {{
+/* Exclude select filter inputs — they are ~2px wide; a 3px outline
+   reads as a green caret box beside the selected value while typing. */
+input:focus-visible:not([role="combobox"]) {{
   outline: 3px solid {FOCUS} !important;
   outline-offset: 2px !important;
+}}
+div[data-testid="stSelectbox"] input,
+div[data-testid="stMultiSelect"] input,
+[data-baseweb="select"] input,
+[data-baseweb="select"] input:focus,
+[data-baseweb="select"] input:focus-visible {{
+  outline: none !important;
+  outline-width: 0 !important;
+  outline-offset: 0 !important;
+  box-shadow: none !important;
+  caret-color: {TEXT} !important;
 }}
 
 /* Expanders — thin top divider only; no box / fill */
