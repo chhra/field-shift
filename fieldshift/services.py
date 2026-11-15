@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -38,9 +39,19 @@ def using_mock_data() -> bool:
     return not (CACHE_DIR / "demo_iowa.json").exists()
 
 
-def _demo_cache(field_id: str) -> dict[str, Any] | None:
+def _mtime(path: Path) -> float:
+    return path.stat().st_mtime if path.exists() else 0.0
+
+
+@lru_cache(maxsize=16)
+def _demo_cache_at(field_id: str, mtime: float) -> dict[str, Any] | None:
+    _ = mtime
     raw = read_json(f"demo_{field_id}.json", from_mock=False)
     return raw if isinstance(raw, dict) else None
+
+
+def _demo_cache(field_id: str) -> dict[str, Any] | None:
+    return _demo_cache_at(field_id, _mtime(CACHE_DIR / f"demo_{field_id}.json"))
 
 
 def list_demo_fields() -> list[DemoField]:
@@ -78,6 +89,14 @@ def load_demo_conditions(field_id: str) -> FieldConditions:
     return FieldConditions.model_validate(raw)
 
 
+@lru_cache(maxsize=8)
+def _read_tables(
+    tidy_p: str, daily_p: str, tidy_mtime: float, daily_mtime: float
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    _ = tidy_mtime, daily_mtime
+    return pd.read_parquet(tidy_p), pd.read_parquet(daily_p)
+
+
 def _load_demo_tables(field_id: str) -> tuple[pd.DataFrame, pd.DataFrame]:
     tidy_p = CACHE_DIR / f"demo_{field_id}_tidy.parquet"
     daily_p = CACHE_DIR / f"demo_{field_id}_daily.parquet"
@@ -90,7 +109,11 @@ def _load_demo_tables(field_id: str) -> tuple[pd.DataFrame, pd.DataFrame]:
         raise FileNotFoundError(
             f"No tidy/daily cache for {field_id} — run tools/precompute_demo.py"
         )
-    return pd.read_parquet(tidy_p), pd.read_parquet(daily_p)
+    # Copies: callers may add columns, and the cached frames must stay pristine.
+    tidy, daily = _read_tables(
+        str(tidy_p), str(daily_p), _mtime(tidy_p), _mtime(daily_p)
+    )
+    return tidy.copy(), daily.copy()
 
 
 def analyze_field(polygon: dict[str, Any], name: str | None = None) -> FieldConditions:

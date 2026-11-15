@@ -83,7 +83,7 @@ CONTRAST_PAIRS: list[tuple[str, str, str, float]] = [
     ("text_on_sidebar", TEXT, SIDEBAR, 4.5),
 ]
 
-_THEME_VERSION = "ui-polish-v1"
+_THEME_VERSION = "ui-polish-v2"
 
 
 def inject_nav_active(active_path: str) -> None:
@@ -460,8 +460,12 @@ div[data-testid="stCheckbox"] label {{
   font-weight: 400;
   color: {MUTED};
 }}
+.fs-farm-why--tight {{
+  margin: 2px 0 0 0;
+  min-height: 2.8em;
+}}
 .fs-farm-goal-name {{
-  margin: 8px 0 2px 0;
+  margin: 14px 0 2px 0;
   font-size: 14px;
   font-weight: 600;
   color: {TEXT};

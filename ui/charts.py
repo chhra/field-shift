@@ -204,7 +204,7 @@ def scores_bar(scores: ScoreSet, *, height: int = 175) -> go.Figure:
         )
     )
     fig.update_layout(
-        margin={"l": 58, "r": 36, "t": 6, "b": 6},
+        margin={"l": 104, "r": 36, "t": 6, "b": 6},
         height=height,
         xaxis={
             "range": [0, 120],

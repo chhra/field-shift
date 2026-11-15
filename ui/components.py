@@ -7,7 +7,7 @@ from typing import Any
 
 import streamlit as st
 
-from ui.theme import MUTED, PRIMARY, SCORE_COLORS, SIDEBAR, TEXT
+from ui.theme import MUTED, PRIMARY, SCORE_COLORS, TEXT
 
 
 def hero(
@@ -142,21 +142,28 @@ def weights_bar(weights: dict[str, float]) -> None:
         "market": "Market",
     }
     keys = list(weights.keys())
+    top = max([weights[k] for k in keys] + [0.01])
+    st.markdown(
+        '<p class="fs-farm-slot-label"><strong>How much each goal counts in the '
+        "ranking</strong></p>",
+        unsafe_allow_html=True,
+    )
     fig = go.Figure(
         go.Bar(
             x=[weights[k] for k in keys],
             y=[labels.get(k, k) for k in keys],
             orientation="h",
             marker_color=[SCORE_COLORS.get(k, PRIMARY) for k in keys],
-            text=[f"{weights[k]:.1f}" for k in keys],
+            text=[f"{weights[k]:.0%}" for k in keys],
             textposition="outside",
             cliponaxis=False,
+            hovertemplate="%{y}: %{x:.0%}<extra></extra>",
         )
     )
     fig.update_layout(
         height=170,
-        margin={"l": 70, "r": 36, "t": 8, "b": 8},
-        xaxis={"range": [0, 1.15], "title": None, "gridcolor": SIDEBAR},
+        margin={"l": 104, "r": 36, "t": 4, "b": 4},
+        xaxis={"range": [0, top * 1.2], "visible": False},
         yaxis={"autorange": "reversed"},
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",

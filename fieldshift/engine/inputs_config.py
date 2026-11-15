@@ -223,7 +223,7 @@ TWO_YEAR_HELP = (
     "Turn this on when two cash crops share one summer season across years. "
     "Leave it off when two seasons fit in one year (for example rice then wheat)."
 )
-MONTHS_EXPANDER_LABEL = "Change planting or harvest months (only if satellites got them wrong)"
+MONTHS_EXPANDER_LABEL = "Adjust months"
 
 IMPORTANCE_LABELS: dict[int, str] = {
     0: "Not important",

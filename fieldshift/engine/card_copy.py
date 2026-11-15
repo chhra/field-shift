@@ -57,10 +57,15 @@ def format_delta_label(
         return "Compared to yours", "neutral"
     if abs(float(delta)) < threshold:
         return "About the same as yours", "neutral"
-    d = float(delta)
-    if d > 0:
-        return f"+{d:.2f} vs yours", "up"
-    return f"{d:.2f} vs yours", "down"
+    pts = score_points(float(delta))
+    if pts > 0:
+        return f"{pts} points higher than yours", "up"
+    return f"{abs(pts)} points lower than yours", "down"
+
+
+def score_points(delta: float) -> int:
+    """0–1 score delta as whole points on the 0–100 scale the cards show."""
+    return int(round(float(delta) * 100))
 
 
 def top_criterion_diffs(

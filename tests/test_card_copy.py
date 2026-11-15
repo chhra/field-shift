@@ -51,6 +51,11 @@ def test_format_delta_neutral() -> None:
     assert "same" in text.lower()
 
 
+def test_format_delta_uses_card_points() -> None:
+    assert format_delta_label(0.05) == ("5 points higher than yours", "up")
+    assert format_delta_label(-0.054) == ("5 points lower than yours", "down")
+
+
 def test_farmer_sentence_tradeoff() -> None:
     diffs = [
         {"key": "nitrogen", "friendly": "natural nitrogen", "direction": "better", "delta": 0.2, "pct": 80, "band": "Strong", "label": "N"},

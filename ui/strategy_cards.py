@@ -11,6 +11,7 @@ from fieldshift.engine.card_copy import (
     farmer_comparison_sentence,
     format_delta_label,
     rotation_title_line,
+    score_points,
     top_criterion_diffs,
 )
 from fieldshift.models import ScoreSet, StrategyCard
@@ -69,8 +70,9 @@ def render_score_legend() -> None:
 | **Build organic matter** | Residue, roots, months of cover |
 | **Good market** | crops.json market tier |
 
-**Delta display:** if the overall change vs your rotation is smaller than
-**0.02**, the card shows “About the same as yours” instead of a signed delta.
+**Delta display:** changes are shown in points on the same 0–100 scale. If the
+overall change vs your rotation is under **2 points**, the card shows “About the
+same as yours”.
             """
         )
 
@@ -201,14 +203,13 @@ def _scores_figure_html(scores: ScoreSet) -> str:
 def _top3_html(diffs: list[dict[str, Any]]) -> str:
     parts: list[str] = []
     for d in diffs:
-        sign = "+" if d["delta"] >= 0 else ""
-        delta_s = f"{sign}{d['delta']:.2f}"
+        pts = abs(score_points(d["delta"]))
         if d["direction"] == "better":
-            verb = f"better ({delta_s})"
+            verb = f"{pts} pts better"
         elif d["direction"] == "worse":
-            verb = f"lower ({delta_s})"
+            verb = f"{pts} pts lower"
         else:
-            verb = "similar (0.00)"
+            verb = "similar"
         parts.append(
             f'<div class="fs-diff-line">'
             f'<span class="fs-diff-name">{html.escape(d["label"])}</span>'
@@ -267,7 +268,7 @@ def _render_one_card(
     if show_climate_delta and delta is not None and tier != "baseline":
         climate_bit = (
             f'<p class="fs-card-note">Climate scenario applied · '
-            f"change {delta:+.2f}</p>"
+            f"change {score_points(delta):+d} points</p>"
         )
 
     flags = ""
