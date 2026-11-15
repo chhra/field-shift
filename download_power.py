@@ -10,10 +10,15 @@ import json
 # 1. Farm reference location
 # --------------------------------------------------
 
-LATITUDE = 52.7045524
-LONGITUDE = 0.2431611
+# Rothamsted Research, Broadbalk field, Harpenden, Hertfordshire (TL123 136).
+# Coordinates: Poulton et al. (Rothamsted repository) 51.8095, -0.3730;
+# Geograph 51.809146, -0.373222. Previous location (Pear Tree, Norfolk Fens):
+# 52.7045524, 0.2431611 - its files are kept as nasa_power_peartree_*.
+LATITUDE = 51.809
+LONGITUDE = -0.373
 
-FARM_NAME = "Peartree Farm"
+FARM_NAME = "Rothamsted Broadbalk"
+FARM_ID = "broadbalk"   # used in the output file names
 
 # Historical period: 2000 to 2026
 START_DATE = "20000101"
@@ -52,7 +57,8 @@ params = {
 # 3. Create output directory
 # --------------------------------------------------
 
-output_dir = Path("data/raw")
+# built from this file's location, so it works from any folder
+output_dir = Path(__file__).resolve().parent / "data" / "raw"
 output_dir.mkdir(parents=True, exist_ok=True)
 
 
@@ -116,8 +122,8 @@ df.insert(2, "longitude", LONGITUDE)
 # 6. Save raw JSON and processed CSV
 # --------------------------------------------------
 
-json_path = output_dir / "nasa_power_peartree_2000_2026.json"
-csv_path = output_dir / "nasa_power_peartree_2000_2026.csv"
+json_path = output_dir / f"nasa_power_{FARM_ID}_2000_2026.json"
+csv_path = output_dir / f"nasa_power_{FARM_ID}_2000_2026.csv"
 
 with open(json_path, "w", encoding="utf-8") as file:
     json.dump(payload, file, indent=2)

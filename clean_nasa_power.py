@@ -8,9 +8,11 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parent
 
+# Raw file from download_power.py (FARM_ID "broadbalk" = Rothamsted Broadbalk).
+# The earlier Pear Tree (Norfolk Fens) download is nasa_power_peartree_2000_2026.csv.
 INPUT_FILE = (
     ROOT / "data" / "raw" /
-    "nasa_power_peartree_2000_2026.csv"
+    "nasa_power_broadbalk_2000_2026.csv"
 )
 
 OUTPUT_DIR = ROOT / "data" / "processed" / "climate"
