@@ -6,8 +6,8 @@ from fieldshift.models import CropInSequence
 from ui.year_strip import (
     month_range,
     months_from_text,
+    rows_from_crops,
     rows_from_sequence,
-    rows_from_slots,
     year_strip_html,
 )
 
@@ -44,23 +44,26 @@ def test_cover_fills_bare_months_every_year_only() -> None:
 
 
 def test_two_seasons_share_one_year() -> None:
-    rows = rows_from_slots(
-        [([6, 7, 8, 9, 10], "rice"), ([11, 12, 1, 2, 3, 4], "winter_wheat")],
-        cycle_years=1,
-        cover_crop=None,
-        cover_months=[5, 6],
+    rows = rows_from_crops(
+        [
+            ("rice", [6, 7, 8, 9, 10]),
+            ("winter_wheat", [11, 12, 1, 2, 3, 4]),
+            ("radish_cover", [5, 6]),
+        ]
     )
     assert len(rows) == 1
-    assert rows[0][4] is None  # May is bare
-    assert rows[0][5] == ("rice", False)  # cash wins over the cover window
+    assert rows[0][4] == ("radish_cover", True)  # May: cover in the bare month
+    assert rows[0][5] == ("rice", False)  # June: cash wins over the cover window
+
+
+def test_six_winter_crops_get_six_years() -> None:
+    rows = rows_from_crops([(c, months_from_text("Oct–Jun")) for c in "abcdef"])
+    assert len(rows) == 6
 
 
 def test_html_labels_years_and_describes_rows_for_screen_readers() -> None:
-    rows = rows_from_slots(
-        [([5, 6, 7, 8, 9, 10], "maize"), ([5, 6, 7, 8, 9, 10], "soybean")],
-        cycle_years=2,
-        cover_crop=None,
-        cover_months=[],
+    rows = rows_from_crops(
+        [("maize", [5, 6, 7, 8, 9, 10]), ("soybean", [5, 6, 7, 8, 9, 10])]
     )
     out = year_strip_html(rows)
     assert "Year 2" in out

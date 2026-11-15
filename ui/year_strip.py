@@ -53,40 +53,25 @@ def month_range(start: int, end: int) -> list[int]:
     return [((start - 1 + k) % 12) + 1 for k in range(span + 1)]
 
 
-def rows_from_slots(
-    cash: list[tuple[list[int], str]],
-    *,
-    cycle_years: int,
-    cover_crop: str | None,
-    cover_months: list[int],
-) -> list[Row]:
-    """Rows (one per year) from farm-input slots: cash seasons, then a shared cover."""
-    years = max(1, cycle_years)
-    per_year = max(1, -(-len(cash) // years))
-    rows: list[Row] = []
-    for y in range(years):
-        row: Row = [None] * 12
-        for months, crop in cash[y * per_year:(y + 1) * per_year]:
-            for m in months:
-                row[m - 1] = (crop, False)
-        if cover_crop:
-            for m in cover_months:
-                if row[m - 1] is None:
-                    row[m - 1] = (cover_crop, True)
-        rows.append(row)
-    return rows
-
-
-def rows_from_sequence(sequence: list[Any], *, max_rows: int = 4) -> list[Row]:
-    """Rows from a strategy sequence. A cash crop that mostly overlaps the
-    current year starts the next year; cover crops fill bare months every year."""
-    rows: list[Row] = [[None] * 12]
-    covers: list[tuple[str, list[int]]] = []
+def rows_from_sequence(sequence: list[Any], *, max_rows: int = 6) -> list[Row]:
+    """Rows from a strategy sequence (CropInSequence items)."""
+    items: list[tuple[str, list[int]]] = []
     for item in sequence:
-        crop = item.crop_id
         months = months_from_text(item.months)
         if not months and item.plant_month and item.harvest_month:
             months = month_range(item.plant_month, item.harvest_month)
+        items.append((item.crop_id, months))
+    return rows_from_crops(items, max_rows=max_rows)
+
+
+def rows_from_crops(
+    items: list[tuple[str, list[int]]], *, max_rows: int = 6
+) -> list[Row]:
+    """Lay crops out year by year. A cash crop that mostly overlaps the current
+    year starts the next year; cover crops fill bare months every year."""
+    rows: list[Row] = [[None] * 12]
+    covers: list[tuple[str, list[int]]] = []
+    for crop, months in items:
         if not months:
             continue
         if is_cover_crop(crop):

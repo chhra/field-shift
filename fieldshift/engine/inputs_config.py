@@ -232,8 +232,8 @@ QUESTIONS: dict[str, tuple[str, str]] = {
         "Satellites read this outline. Redraw it on the Home page if it is wrong.",
     ),
     "crops": (
-        "What do you grow in each season?",
-        "Seasons come from satellites. Every option is compared with what you grow now.",
+        "What do you grow now?",
+        "Your main crops, in the order you grow them. Every option is compared with this.",
     ),
     "water": (
         "Do you water this field, or rely on rain?",
