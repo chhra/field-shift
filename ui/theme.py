@@ -98,7 +98,7 @@ CONTRAST_PAIRS: list[tuple[str, str, str, float]] = [
     ("text_on_sidebar", TEXT, SIDEBAR, 4.5),
 ]
 
-_THEME_VERSION = "goal-ranking-v2"
+_THEME_VERSION = "goal-ranking-v3"
 
 
 def inject_nav_active(active_path: str) -> None:
@@ -458,6 +458,9 @@ div[data-testid="stRadio"] label[data-baseweb="radio"] [data-testid="stMarkdownC
 [class*="st-key-rank-row-"] [data-testid="stHorizontalBlock"] {{
   flex-wrap: nowrap !important;
   gap: 4px !important;
+}}
+[class*="st-key-rank-row-"] [data-testid="stMarkdownContainer"] {{
+  margin-bottom: 0 !important;
 }}
 [class*="st-key-rank-row-"] [data-testid="stColumn"] {{
   flex: 0 0 44px !important;

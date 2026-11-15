@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
+import folium
 import streamlit as st
 from fieldshift.data.ee_client import init_ee
 from fieldshift.geo import polygon_area_ha, polygon_from_point
@@ -12,9 +13,11 @@ from fieldshift.models import FieldConditions
 from fieldshift.services import analyze_field, using_mock_data
 from streamlit_folium import st_folium
 from team_model.live_climate import in_uk
-from ui.components import demo_field_cards, hero, section
+from ui.components import hero, section
 from ui.map import field_map
 from ui.mock_banner import show_mock_banner
+
+_BROADBALK = (51.809, -0.373)
 
 
 @st.cache_data(ttl=3600, show_spinner=False)
@@ -44,19 +47,39 @@ section(
     "since 1853. Opens the UK rotation model, where NASA satellite rainfall is checked "
     "against that gauge.",
 )
-opened = demo_field_cards(
-    [
-        {
-            "id": "broadbalk",
-            "name": "Rothamsted Broadbalk",
-            "climate": "Temperate oceanic — long-term experiment",
-            "country": "United Kingdom · Harpenden",
-            "rotation": "Winter wheat system",
-            "thumb_path": None,
-            "button_label": "Open the UK model",
-        }
-    ]
-)
+c_map, c_copy = st.columns([3, 2], gap="large")
+with c_map:
+    demo_map = field_map(center=_BROADBALK, zoom=15)
+    folium.Marker(
+        _BROADBALK,
+        tooltip="Broadbalk field · rain gauge since 1853",
+    ).add_to(demo_map)
+    st_folium(
+        demo_map,
+        width=None,
+        height=320,
+        key="home-broadbalk-map",
+        returned_objects=[],
+    )
+with c_copy:
+    st.markdown(
+        f"""
+<div class="fs-demo-copy">
+  <p class="fs-demo-card-title">Rothamsted Broadbalk</p>
+  <p class="fs-demo-card-meta">Harpenden, United Kingdom ·
+    {_BROADBALK[0]:.3f}° N, {abs(_BROADBALK[1]):.3f}° W</p>
+  <p class="fs-demo-card-meta">Temperate oceanic · winter wheat since 1843 ·
+    rain gauge since 1853</p>
+</div>
+        """,
+        unsafe_allow_html=True,
+    )
+    opened = st.button(
+        "Open the UK model",
+        key="demo-broadbalk",
+        type="primary",
+        use_container_width=True,
+    )
 if opened:
     # Broadbalk card: clear any entered location so the model shows Rothamsted.
     st.session_state.pop("ukm_lat", None)
