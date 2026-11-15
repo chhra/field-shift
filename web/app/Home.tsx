@@ -27,56 +27,66 @@ export function Home() {
   return (
     <>
       <section className={`page ${styles.hero}`} aria-labelledby="hero-title">
-        <div className={styles.heroText}>
+        <div className={styles.heroHead}>
           <h1 id="hero-title" className={styles.headline}>
             See what NASA satellites know about your field.
           </h1>
-          <p className={styles.lede}>
-            Then compare crop rotations that build soil and resilience — side by side, in plain
-            words, with no scores to decode.
-          </p>
-          <div className={styles.ctas}>
-            <Link className="btn btn-primary" href="/uk">
-              Open the Broadbalk demo
-            </Link>
-            <a className="btn" href="#analyze">
-              Analyze my own field
-            </a>
+          <div className={styles.heroAside}>
+            <p className={styles.lede}>
+              Then compare crop rotations that build soil and resilience — side by side, in plain
+              words, with no scores to decode.
+            </p>
+            <div className={styles.ctas}>
+              <Link className="btn btn-primary" href="/uk">
+                Open the Broadbalk demo
+              </Link>
+              <a className="btn" href="#analyze">
+                Analyze my own field
+              </a>
+            </div>
           </div>
         </div>
 
-        <figure className={styles.heroFigure}>
-          <div className={styles.heroStrip}>
-            {current ? (
-              <YearStrip rows={current.calendar} size="hero" legend animate />
-            ) : (
-              <div className={styles.stripPlaceholder} aria-hidden="true" />
-            )}
+        <figure className={styles.visual}>
+          <div className={styles.imagery}>
+            <MapView
+              center={[BROADBALK.lat, BROADBALK.lon]}
+              zoom={16}
+              height="100%"
+              interactive={false}
+              attributionPosition="topright"
+              nudge={[0, 70]}
+              marker={{ ...BROADBALK, label: "Broadbalk" }}
+              label="Satellite image of the Broadbalk field at Rothamsted"
+            />
+            <p className={styles.chip}>
+              <span className={styles.chipDot} aria-hidden="true" />
+              Rothamsted, Harpenden · winter wheat since 1843
+            </p>
           </div>
-          <figcaption className={styles.heroCaption}>
-            {current ? (
-              <>
-                Broadbalk’s rotation in the UK model, month by month:{" "}
-                <strong>{current.steps.join(", then ")}</strong>. Every option in Field Shift is
-                laid out like this, so you can see when the soil is covered and when it lies bare.
-              </>
-            ) : (
-              "Loading Broadbalk’s farming year…"
-            )}
+          <div className={styles.sheet}>
+            <div className={styles.sheetHead}>
+              <p className={styles.sheetTitle}>Broadbalk’s farming year</p>
+              <p className={styles.sheetMeta}>
+                {current ? current.steps.join(" → ") : "Loading the UK model…"}
+              </p>
+            </div>
+            <div className={styles.strip}>
+              {current ? (
+                <YearStrip rows={current.calendar} size="hero" legend animate />
+              ) : (
+                <div className={styles.stripPlaceholder} aria-hidden="true" />
+              )}
+            </div>
+          </div>
+          <figcaption className={styles.caption}>
+            Every option in Field Shift is laid out month by month like this, so you can see when
+            the soil is covered and when it lies bare.
           </figcaption>
         </figure>
       </section>
 
       <section id="demo" className={`page ${styles.demo}`} aria-labelledby="demo-title">
-        <div className={styles.demoMap}>
-          <MapView
-            center={[BROADBALK.lat, BROADBALK.lon]}
-            zoom={15}
-            height={400}
-            marker={{ ...BROADBALK, label: "Broadbalk" }}
-            label="Satellite map of the Broadbalk field at Rothamsted"
-          />
-        </div>
         <div className={styles.demoCopy}>
           <h2 id="demo-title" className={styles.h2}>
             Try the demo field
@@ -86,28 +96,28 @@ export function Home() {
             field here with physical ground measurements: a rain gauge has recorded on this farm
             since 1853. The UK rotation model checks NASA satellite rainfall against that gauge.
           </p>
-          <dl className={styles.demoFacts}>
-            <div>
-              <dt>Where</dt>
-              <dd>Harpenden, United Kingdom</dd>
-            </div>
-            <div>
-              <dt>Coordinates</dt>
-              <dd className="num">51.809° N, 0.373° W</dd>
-            </div>
-            <div>
-              <dt>Climate</dt>
-              <dd>Temperate oceanic</dd>
-            </div>
-            <div>
-              <dt>On record</dt>
-              <dd>Winter wheat since 1843, rain gauge since 1853</dd>
-            </div>
-          </dl>
           <Link className="btn btn-primary" href="/uk">
             Open the UK model
           </Link>
         </div>
+        <dl className={styles.demoFacts}>
+          <div>
+            <dt>Where</dt>
+            <dd>Harpenden, United Kingdom</dd>
+          </div>
+          <div>
+            <dt>Coordinates</dt>
+            <dd className="num">51.809° N, 0.373° W</dd>
+          </div>
+          <div>
+            <dt>Climate</dt>
+            <dd>Temperate oceanic</dd>
+          </div>
+          <div>
+            <dt>On record</dt>
+            <dd>Winter wheat since 1843, rain gauge since 1853</dd>
+          </div>
+        </dl>
       </section>
 
       <section id="analyze" className={`page ${styles.analyze}`} aria-labelledby="analyze-title">

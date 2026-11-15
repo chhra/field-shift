@@ -1,26 +1,13 @@
 .intro {
   max-width: var(--measure);
-  margin: 18px 0 28px;
+  margin: 16px 0 0;
   font-size: 18px;
   line-height: 1.5;
   color: var(--muted);
 }
 
-.fieldGrid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
-  gap: 36px;
-  align-items: center;
-}
-
-.fieldGrid > dl {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-@media (max-width: 900px) {
-  .fieldGrid {
-    grid-template-columns: minmax(0, 1fr);
-  }
+.intro + p[role="status"] {
+  margin-top: 20px;
 }
 
 .station {

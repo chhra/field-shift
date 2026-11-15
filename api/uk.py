@@ -9,10 +9,10 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from fieldshift.engine.inputs_config import default_goal_order
 from team_model import app_adapter, model
-from ui.plans import uk_recommendation_sentence
+from ui.plans import uk_crop_tone, uk_recommendation_sentence
 
 from api.presenters import uk_plan_list
-from api.schemas import Fact, StationCheck, UkContext, UkOptions, UkRequest
+from api.schemas import CropChoice, Fact, StationCheck, UkContext, UkOptions, UkRequest
 
 router = APIRouter(prefix="/api/uk", tags=["uk"])
 
@@ -162,7 +162,10 @@ def uk_context(lat: float | None = None, lon: float | None = None) -> UkContext:
         field_text=field_text,
         facts=facts,
         station=_station(farm) if real_farm else None,
-        crop_choices=app_adapter.crop_choices(crops),
+        crop_choices=[
+            CropChoice(id=name, name=name, tone=uk_crop_tone(name))
+            for name in app_adapter.crop_choices(crops)
+        ],
         default_rotation=DEFAULT_ROTATION,
         default_goal_order=default_goal_order(app_adapter.DEFAULT_GOALS),  # type: ignore[arg-type]
         reliability=reliability,

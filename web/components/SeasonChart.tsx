@@ -2,23 +2,21 @@
 
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import type { MonthPoint } from "@/lib/types";
-import { MONTHS } from "./YearStrip";
+import { FULL_MONTHS as FULL, MONTHS } from "./YearStrip";
 import styles from "./SeasonChart.module.css";
 
-const FULL = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
+/** Longest unbroken run of months on the Jan–Dec axis, as [first, length]. */
+function longestRun(months: number[]): [number, number] | null {
+  const set = new Set(months);
+  let best: [number, number] | null = null;
+  for (let m = 1; m <= 12; m++) {
+    if (!set.has(m) || set.has(m - 1)) continue;
+    let len = 1;
+    while (set.has(m + len)) len++;
+    if (!best || len > best[1]) best = [m, len];
+  }
+  return best;
+}
 
 function niceStep(span: number) {
   const raw = span / 4;
@@ -39,18 +37,29 @@ function useWidth<T extends HTMLElement>() {
   return [ref, width] as const;
 }
 
-/** Plant greenness (line, 0–1), rain (bars, mm) and water balance (dashed, mm). */
+/**
+ * Plant greenness (line, 0–1), rain (bars, mm) and water balance (dashed, mm).
+ * ``linked`` marks the month the timelapse is showing; ``onHover`` reports the
+ * month under the pointer so the timelapse can follow.
+ */
 export function SeasonChart({
   months,
   bare,
   stress,
+  linked = null,
+  onHover,
 }: {
   months: MonthPoint[];
   bare: number[];
   stress: number[];
+  linked?: number | null;
+  onHover?: (month: number | null) => void;
 }) {
   const [wrapRef, width] = useWidth<HTMLDivElement>();
   const [active, setActive] = useState<number | null>(null);
+  useEffect(() => {
+    onHover?.(active);
+  }, [active, onHover]);
 
   const compact = width < 560;
   const height = compact ? 260 : 320;
@@ -97,6 +106,20 @@ export function SeasonChart({
   const point = active ? months.find((p) => p.month === active) : undefined;
   const tipLeft = active ? Math.min(Math.max(x(active), 90), width - 90) : 0;
 
+  // Direct labels instead of legend entries: on the bands, and at the greenest month.
+  const bandLabel = (run: [number, number] | null, long: string, short: string) => {
+    if (!run) return null;
+    const room = run[1] * band - 12;
+    const text = room >= long.length * 6.4 ? long : room >= short.length * 6.4 ? short : null;
+    return text && { x: m.l + (run[0] - 1) * band + 6, text };
+  };
+  const bareLabel = bandLabel(longestRun(bare), "Usually bare", "Bare");
+  const stressLabel = bandLabel(longestRun(stress), "Growing-season stress", "Stress");
+  const peak = ndviPts.reduce<MonthPoint | null>(
+    (b, p) => (b === null || p.ndvi! > b.ndvi! ? p : b),
+    null,
+  );
+
   return (
     <figure className={styles.figure}>
       <ul className={styles.legend} aria-hidden="true">
@@ -111,14 +134,6 @@ export function SeasonChart({
         <li>
           <i className={styles.keyDash} />
           Water balance (mm)
-        </li>
-        <li>
-          <i className={styles.keyBare} />
-          Usually bare
-        </li>
-        <li>
-          <i className={styles.keyStress} />
-          Growing-season stress
         </li>
       </ul>
 
@@ -155,6 +170,26 @@ export function SeasonChart({
               className={styles.stressBand}
             />
           ))}
+          {linked && (
+            <rect
+              x={m.l + (linked - 1) * band}
+              y={m.t}
+              width={band}
+              height={h}
+              rx={4}
+              className={styles.linked}
+            />
+          )}
+          {bareLabel && (
+            <text x={bareLabel.x} y={m.t + 14} className={styles.bareLabel}>
+              {bareLabel.text}
+            </text>
+          )}
+          {stressLabel && (
+            <text x={stressLabel.x} y={m.t + 14} className={styles.stressLabel}>
+              {stressLabel.text}
+            </text>
+          )}
 
           {[0, 0.25, 0.5, 0.75, 1].map((v) => (
             <g key={v}>
@@ -198,8 +233,25 @@ export function SeasonChart({
             />
           ))}
 
+          {peak && (
+            <text
+              x={Math.min(Math.max(x(peak.month), m.l + 48), m.l + w - 48)}
+              y={yNdvi(peak.ndvi!) - 12 < m.t + 30 ? yNdvi(peak.ndvi!) + 22 : yNdvi(peak.ndvi!) - 12}
+              textAnchor="middle"
+              className={styles.peakLabel}
+            >
+              Peak greenness
+            </text>
+          )}
+
           {MONTHS.map((mo, i) => (
-            <text key={mo} x={x(i + 1)} y={height - 8} className={styles.tickX} textAnchor="middle">
+            <text
+              key={mo}
+              x={x(i + 1)}
+              y={height - 8}
+              className={`${styles.tickX} ${linked === i + 1 ? styles.tickOn : ""}`}
+              textAnchor="middle"
+            >
               {compact ? mo[0] : mo}
             </text>
           ))}

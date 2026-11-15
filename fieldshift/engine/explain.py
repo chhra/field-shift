@@ -35,6 +35,20 @@ def _data_through_for(
     return None
 
 
+_FAMILY_PLAIN = {
+    "poaceae": "a cereal",
+    "fabaceae": "a legume",
+    "brassicaceae": "a brassica",
+    "asteraceae": "in the sunflower family",
+    "malvaceae": "in the mallow family",
+}
+
+
+def _plain_name(crop: dict[str, Any]) -> str:
+    """Mid-sentence crop name: 'Cereal rye (cover crop)' -> 'cereal rye'."""
+    return str(crop["name"]).split(" (")[0].lower()
+
+
 def _pest_benefit_lines(sequence: list[str]) -> list[str]:
     """Benefit lines when consecutive crops are from different families."""
     if len(sequence) < 2:
@@ -43,9 +57,10 @@ def _pest_benefit_lines(sequence: list[str]) -> list[str]:
     for a, b in zip(sequence, sequence[1:], strict=False):
         ca, cb = crop_by_id(a), crop_by_id(b)
         if ca["family"] != cb["family"]:
+            next_crop = _plain_name(cb)
+            family = _FAMILY_PLAIN.get(cb["family"], "from another crop family")
             lines.append(
-                f"Breaks the cycle of {ca['name'].lower()} pests "
-                f"(different crop family: {cb['family']})"
+                f"Breaks the cycle of {ca['name'].lower()} pests: {next_crop} is {family}"
             )
     # Keep pest-break calculation alive for the benefit signal.
     _ = score_pest_break(sequence)
@@ -76,7 +91,7 @@ def _supplemental_income_benefit(sequence: list[str]) -> list[str]:
     ]
     if not forage:
         return []
-    names = ", ".join(c["name"] for c in forage[:2])
+    names = " and ".join(_plain_name(c) for c in forage[:2])
     return [f"Supplemental income or feed value possible from {names}"]
 
 

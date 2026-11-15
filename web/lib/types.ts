@@ -69,6 +69,7 @@ export interface Choice {
 export interface CropChoice {
   id: string;
   name: string;
+  tone: string | null;
 }
 
 export interface InputsMeta {
@@ -118,6 +119,7 @@ export interface FieldDetail {
     available: boolean;
     frames: number;
     size: [number, number] | null;
+    months: number[] | null;
     message: string | null;
     data_through: string | null;
   }[];
@@ -210,7 +212,7 @@ export interface UkContext {
   field_text: string;
   facts: Fact[];
   station: StationCheck | null;
-  crop_choices: string[];
+  crop_choices: CropChoice[];
   default_rotation: string[];
   default_goal_order: GoalKey[];
   reliability: string[];

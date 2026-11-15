@@ -58,3 +58,32 @@ export function useLivePost<Res>(path: string | null, body: unknown, delay = 220
 
   return { data, error, pending };
 }
+
+/**
+ * Whether an element is on screen. Returns a callback ref, so it also works for
+ * elements that only mount once data has loaded.
+ */
+export function useOnScreen<T extends Element>(rootMargin = "0px") {
+  const [el, setEl] = useState<T | null>(null);
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    if (!el) return;
+    const io = new IntersectionObserver(([e]) => setOn(e.isIntersecting), { rootMargin });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [el, rootMargin]);
+  return [setEl, on] as const;
+}
+
+/** Matches a media query; false during server render and the first client paint. */
+export function useMedia(query: string) {
+  const [match, setMatch] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia(query);
+    setMatch(mq.matches);
+    const on = (e: MediaQueryListEvent) => setMatch(e.matches);
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, [query]);
+  return match;
+}

@@ -71,7 +71,25 @@ export function Question({
 export function Banner({ children, tone = "good" }: { children: ReactNode; tone?: "good" | "note" }) {
   return (
     <p className={`${styles.banner} ${tone === "note" ? styles.note : ""}`} role="status">
-      {children}
+      <span className={styles.bannerIcon} aria-hidden="true">
+        {tone === "note" ? (
+          <svg viewBox="0 0 16 16">
+            <path d="M8 7.2v4M8 4.8v.1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          </svg>
+        ) : (
+          <svg viewBox="0 0 16 16">
+            <path
+              d="M4 8.4 6.7 11 12 5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.9"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        )}
+      </span>
+      <span>{children}</span>
     </p>
   );
 }

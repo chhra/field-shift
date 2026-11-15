@@ -83,6 +83,7 @@ class Choice(BaseModel):
 class CropChoice(BaseModel):
     id: str
     name: str
+    tone: str | None = Field(None, description="Calendar colour key, as in CalendarSegment")
 
 
 # --- Inputs metadata ---------------------------------------------------------
@@ -142,6 +143,7 @@ class Timelapse(BaseModel):
     available: bool
     frames: int
     size: tuple[int, int] | None = Field(description="Frame width, height in pixels")
+    months: list[int] | None = Field(None, description="Calendar month (1-12) of each frame")
     message: str | None
     data_through: str | None
 
@@ -263,7 +265,7 @@ class UkContext(BaseModel):
     field_text: str
     facts: list[Fact]
     station: StationCheck | None
-    crop_choices: list[str]
+    crop_choices: list[CropChoice]
     default_rotation: list[str]
     default_goal_order: list[GoalKey]
     reliability: list[str]

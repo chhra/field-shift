@@ -1,23 +1,29 @@
 .hero {
-  padding-top: clamp(48px, 9vw, 112px);
+  padding-top: clamp(44px, 8vw, 104px);
 }
 
-.heroText {
-  max-width: 880px;
+.heroHead {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  gap: 28px clamp(32px, 5vw, 72px);
+  align-items: end;
 }
 
 .headline {
-  font-size: clamp(42px, 7vw, 84px);
+  font-size: clamp(42px, 6.6vw, 86px);
   font-weight: 620;
-  line-height: 0.98;
+  line-height: 0.97;
   letter-spacing: -0.045em;
+}
+
+.heroAside {
+  padding-bottom: 6px;
 }
 
 .lede {
   max-width: 34ch;
-  margin-top: 24px;
-  font-size: clamp(19px, 2.1vw, 23px);
-  line-height: 1.4;
+  font-size: clamp(18px, 1.7vw, 21px);
+  line-height: 1.45;
   color: var(--muted);
 }
 
@@ -25,7 +31,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  margin-top: 32px;
+  margin-top: 28px;
 }
 
 .ctas :global(.btn) {
@@ -34,31 +40,114 @@
   font-size: 16px;
 }
 
-.heroFigure {
-  margin: clamp(48px, 7vw, 80px) 0 0;
+@media (max-width: 900px) {
+  .heroHead {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
-.heroStrip {
-  min-height: 230px;
+/* Satellite picture with the farming-year sheet laid over its lower edge. */
+.visual {
+  margin: clamp(40px, 6vw, 72px) 0 0;
+}
+
+.imagery {
+  position: relative;
+  height: clamp(320px, 40vw, 540px);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-m);
+}
+
+.imagery > div {
+  border-radius: 0;
+}
+
+.chip {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100% - 32px);
+  padding: 7px 14px 7px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: var(--shadow-m);
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.chipDot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 0 3px var(--green-wash);
+}
+
+.sheet {
+  position: relative;
+  z-index: 1;
+  margin: calc(-1 * clamp(96px, 12vw, 150px)) clamp(12px, 3vw, 36px) 0;
+  padding: clamp(18px, 2.4vw, 28px) clamp(16px, 2.6vw, 30px) clamp(16px, 2vw, 22px);
+  border-radius: var(--radius-xl);
+  background: var(--surface);
+  box-shadow: var(--shadow-l);
+}
+
+.sheetHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 24px;
+  margin-bottom: 16px;
+}
+
+.sheetTitle {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.sheetMeta {
+  font-size: 14.5px;
+  color: var(--muted);
+}
+
+.strip {
+  min-height: 200px;
 }
 
 .stripPlaceholder {
-  height: 230px;
+  height: 200px;
   border-radius: var(--radius-m);
   background: var(--wash);
 }
 
-.heroCaption {
-  max-width: 70ch;
-  margin-top: 18px;
-  font-size: 14.5px;
+.caption {
+  max-width: 62ch;
+  margin: 18px clamp(12px, 3vw, 36px) 0;
+  font-size: 14px;
   line-height: 1.5;
   color: var(--muted);
 }
 
-.heroCaption strong {
-  color: var(--ink);
-  font-weight: 550;
+@media (max-width: 560px) {
+  .imagery {
+    height: 300px;
+  }
+  .sheet {
+    margin: -72px 8px 0;
+  }
+  .chip {
+    font-size: 12.5px;
+  }
 }
 
 .h2 {
@@ -75,9 +164,9 @@
 
 .demo {
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
-  gap: clamp(28px, 5vw, 56px);
-  align-items: center;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: clamp(28px, 6vw, 88px);
+  align-items: start;
   padding-top: clamp(80px, 11vw, 136px);
 }
 
@@ -118,9 +207,6 @@
 @media (max-width: 860px) {
   .demo {
     grid-template-columns: minmax(0, 1fr);
-  }
-  .demoMap {
-    order: 2;
   }
 }
 

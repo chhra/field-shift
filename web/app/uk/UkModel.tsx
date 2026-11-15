@@ -12,13 +12,22 @@ import {
   WaterTiles,
 } from "@/components/FarmInputs";
 import { GoalRanker } from "@/components/GoalRanker";
-import { MapView } from "@/components/map/MapView";
+import { LiveSummary } from "@/components/LiveSummary";
 import { Banner, Question, Rich, Section } from "@/components/Report";
+import { Contents, SatelliteBand } from "@/components/SatelliteBand";
 import { BROADBALK } from "@/lib/geo";
-import { useGet, useLivePost } from "@/lib/hooks";
+import { useGet, useLivePost, useOnScreen } from "@/lib/hooks";
 import type { GoalKey, InputsMeta, SoilKey, UkContext, UkOptions, UkRequest, WaterKey } from "@/lib/types";
 import styles from "../field/FieldReport.module.css";
 import uk from "./UkModel.module.css";
+
+const CONTENTS = [
+  ["the-field", "The field"],
+  ["farm", "About your farm"],
+  ["weather", "What if the weather changes?"],
+  ["options", "Your options"],
+  ["reliability", "How reliable is this?"],
+] as const;
 
 interface Answers {
   crops: string[];
@@ -33,6 +42,7 @@ export function UkModel({ point }: { point: { lat: number; lon: number } | null 
   const ctx = useGet<UkContext>(`/api/uk/context${query}`);
   const meta = useGet<InputsMeta>("/api/meta/inputs");
   const [answers, setAnswers] = useState<Answers | null>(null);
+  const [inputsRef, inputsInView] = useOnScreen<HTMLDivElement>("0px 0px -35% 0px");
 
   useEffect(() => {
     if (!ctx.data) return;
@@ -74,9 +84,12 @@ export function UkModel({ point }: { point: { lat: number; lon: number } | null 
   }
   if (!ctx.data || !meta.data || !answers) {
     return (
-      <div className={`page ${styles.skeleton}`} aria-busy="true" aria-label="Loading the UK model">
-        <div className={styles.skTitle} />
-        <div className={styles.skBlock} />
+      <div aria-busy="true" aria-label="Loading the UK model">
+        <div className={styles.skBand} />
+        <div className={`page ${styles.skeleton}`}>
+          <div className={styles.skLine} style={{ width: 140 }} />
+          <div className={styles.skTitle} />
+        </div>
       </div>
     );
   }
@@ -85,12 +98,11 @@ export function UkModel({ point }: { point: { lat: number; lon: number } | null 
   const m = meta.data;
   const o = options.data;
   const set = (patch: Partial<Answers>) => setAnswers((a) => (a ? { ...a, ...patch } : a));
-  const choices = c.crop_choices.map((name) => ({ id: name, name }));
   const where = c.at_location && point ? point : BROADBALK;
 
   const setCount = (n: number) => {
     const crops = answers.crops.slice(0, n);
-    for (const name of [...c.default_rotation, ...c.crop_choices]) {
+    for (const name of [...c.default_rotation, ...c.crop_choices.map((x) => x.id)]) {
       if (crops.length >= n) break;
       if (!crops.includes(name)) crops.push(name);
     }
@@ -99,7 +111,14 @@ export function UkModel({ point }: { point: { lat: number; lon: number } | null 
 
   return (
     <article className={styles.report}>
-      <header className={`page ${styles.head}`}>
+      <SatelliteBand
+        map={{
+          center: [where.lat, where.lon],
+          zoom: c.at_location ? 13 : 15,
+          marker: { ...where, label: c.at_location ? "Your field" : "Broadbalk" },
+          label: `Satellite map of ${c.place}`,
+        }}
+      >
         <p className={styles.kicker}>UK rotation model</p>
         <h1 className={styles.title}>{c.place}</h1>
         <p className={uk.intro}>
@@ -107,20 +126,12 @@ export function UkModel({ point }: { point: { lat: number; lon: number } | null 
           Compare them side by side.
         </p>
         {c.location_error && <Banner tone="note">{c.location_error}</Banner>}
-      </header>
+        <Contents items={CONTENTS} />
+      </SatelliteBand>
 
       <div className="page">
         <Section id="the-field" step={1} title="The field" lead={c.field_text}>
-          <div className={uk.fieldGrid}>
-            <MapView
-              center={[where.lat, where.lon]}
-              zoom={c.at_location ? 13 : 15}
-              height={340}
-              marker={{ ...where, label: c.at_location ? "Your field" : "Broadbalk" }}
-              label={`Satellite map of ${c.place}`}
-            />
-            <FactGrid facts={c.facts} />
-          </div>
+          <FactGrid facts={c.facts} />
           {c.station && (
             <div className={uk.station}>
               <Disclosure summary="How the satellite data compares with the rain gauge on this farm">
@@ -168,72 +179,102 @@ export function UkModel({ point }: { point: { lat: number; lon: number } | null 
             </div>
           )}
         </Section>
+      </div>
 
-        <Section
-          id="farm"
-          step={2}
-          title="About your farm"
-          lead="Four quick questions. Change anything that does not match your farm."
-        >
-          <Question n={1} id="uk-crops" title={m.questions.crops.title} why={m.questions.crops.why}>
-            <p className={`caption ${uk.cropsNote}`}>
-              One main crop per harvest year, in order. A ley counts once and stays three years.
-              Leave cover crops out: the model adds them where the soil would be bare.
-            </p>
-            <CropSlots
-              scope="uk"
-              crops={answers.crops}
-              choices={choices}
-              onCount={setCount}
-              onPick={(slot, id) =>
-                set({ crops: answers.crops.map((x, i) => (i === slot ? id : x)) })
-              }
-            />
-          </Question>
+      <div className={styles.inputs} ref={inputsRef}>
+        <div className={`page ${styles.workspace}`}>
+          <div className={styles.questions}>
+            <Section
+              id="farm"
+              step={2}
+              title="About your farm"
+              lead="Four quick questions. Change anything that does not match your farm."
+            >
+              <Question
+                n={1}
+                id="uk-crops"
+                title={m.questions.crops.title}
+                why={m.questions.crops.why}
+              >
+                <p className={`caption ${uk.cropsNote}`}>
+                  One main crop per harvest year, in order. A ley counts once and stays three
+                  years. Leave cover crops out: the model adds them where the soil would be bare.
+                </p>
+                <CropSlots
+                  scope="uk"
+                  crops={answers.crops}
+                  choices={c.crop_choices}
+                  onCount={setCount}
+                  onPick={(slot, id) =>
+                    set({ crops: answers.crops.map((x, i) => (i === slot ? id : x)) })
+                  }
+                />
+              </Question>
 
-          <Question n={2} id="uk-water" title={m.questions.water.title} why={m.questions.water.why}>
-            <WaterTiles
-              scope="uk"
-              choices={m.water}
-              value={answers.water}
-              help={m.water_help}
-              onChange={(water) => set({ water })}
-            />
-          </Question>
+              <Question
+                n={2}
+                id="uk-water"
+                title={m.questions.water.title}
+                why={m.questions.water.why}
+              >
+                <WaterTiles
+                  scope="uk"
+                  choices={m.water}
+                  value={answers.water}
+                  help={m.water_help}
+                  onChange={(water) => set({ water })}
+                />
+              </Question>
 
-          <Question n={3} id="uk-soil" title={m.questions.soil.title} why={m.questions.soil.why}>
-            <SoilTiles
-              scope="uk"
-              choices={m.soil}
-              value={answers.soil}
-              help={m.soil_help}
-              onChange={(soil) => set({ soil })}
-            />
-          </Question>
+              <Question n={3} id="uk-soil" title={m.questions.soil.title} why={m.questions.soil.why}>
+                <SoilTiles
+                  scope="uk"
+                  choices={m.soil}
+                  value={answers.soil}
+                  help={m.soil_help}
+                  onChange={(soil) => set({ soil })}
+                />
+              </Question>
 
-          <Question n={4} id="uk-goals" title={m.questions.goals.title} why={m.questions.goals.why}>
-            <GoalRanker
-              goals={m.goals}
-              order={answers.goals}
-              onChange={(goals) => set({ goals })}
-              emptyNote={m.no_goals_note}
-            />
-          </Question>
-        </Section>
+              <Question
+                n={4}
+                id="uk-goals"
+                title={m.questions.goals.title}
+                why={m.questions.goals.why}
+              >
+                <GoalRanker
+                  goals={m.goals}
+                  order={answers.goals}
+                  onChange={(goals) => set({ goals })}
+                  emptyNote={m.no_goals_note}
+                />
+              </Question>
+            </Section>
 
-        <Section
-          id="weather"
-          step={3}
-          title="What if the weather changes?"
-          lead="Optional, and not a forecast: see which options still hold up if seasons ran warmer."
-        >
-          <WarmingTiles
-            scope="uk"
-            value={answers.warming}
-            onChange={(warming) => set({ warming })}
+            <Section
+              id="weather"
+              step={3}
+              title="What if the weather changes?"
+              lead="Optional, and not a forecast: see which options still hold up if seasons ran warmer."
+            >
+              <WarmingTiles
+                scope="uk"
+                value={answers.warming}
+                onChange={(warming) => set({ warming })}
+              />
+            </Section>
+          </div>
+
+          <LiveSummary
+            plans={o?.plans ?? []}
+            pending={options.pending}
+            error={options.error}
+            barVisible={inputsInView}
           />
-        </Section>
+        </div>
+      </div>
 
+      <div className="page">
         <Section
           id="options"
           step={4}

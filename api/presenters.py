@@ -8,14 +8,8 @@ from typing import Any
 
 from fieldshift.models import StrategyCard
 from ui.glossary import friendly_source
-from ui.plans import ROLE_EYEBROW, field_plan, group_field_cards, uk_plans
-from ui.year_strip import (
-    calendar_model,
-    is_cover_crop,
-    rows_from_crops,
-    rows_from_sequence,
-    short_name,
-)
+from ui.plans import ROLE_EYEBROW, field_plan, group_field_cards, step_labels, uk_plans
+from ui.year_strip import calendar_model, fill_tone, rows_from_crops, rows_from_sequence
 
 from api.schemas import CalendarRow, Evidence, Plan, PlanDetails
 
@@ -31,15 +25,8 @@ def calendar_rows(items: list[tuple[str, list[int]]]) -> list[CalendarRow]:
     return [CalendarRow.model_validate(r) for r in calendar_model(rows_from_crops(items))]
 
 
-def _steps(crop_ids: list[str]) -> list[str]:
-    """Crop names in rotation order; months live in the calendar, not the title."""
-    out: list[str] = []
-    for cid in crop_ids:
-        label = short_name(cid)
-        if is_cover_crop(cid) and "cover" not in label.lower():
-            label = f"{label} cover"
-        out.append(label)
-    return out
+def crop_tone(crop_id: str) -> str:
+    return fill_tone((crop_id, False))
 
 
 def _years(n: int) -> str:
@@ -109,7 +96,7 @@ def field_plan_groups(
             content,
             [CalendarRow.model_validate(r) for r in rows],
             _field_details(card),
-            steps=_steps([s.crop_id for s in card.sequence]),
+            steps=step_labels([s.crop_id for s in card.sequence]),
             meta=_years(len(rows)),
         )
 
@@ -134,7 +121,7 @@ def uk_plan_list(results: list[dict[str, Any]]) -> list[Plan]:
                     checks=list(r.get("checks") or []),
                     gaps=list(r.get("reasons") or []),
                 ),
-                steps=_steps([cid for cid, _months in items]),
+                steps=step_labels([cid for cid, _months in items]),
                 meta=_years(int(r.get("years") or 0)),
             )
         )

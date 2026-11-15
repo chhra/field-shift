@@ -43,9 +43,10 @@ from fieldshift.services import (
 from PIL import Image
 from ui.charts import conditions_takeaway
 from ui.explainers import FACT_HELP, chart_how_to_read
+from ui.plans import best_fit_sentence
 from ui.year_strip import MONTH_ABBR, month_range, months_from_text, short_name
 
-from api.presenters import calendar_rows, field_plan_groups
+from api.presenters import calendar_rows, crop_tone, field_plan_groups
 from api.schemas import (
     AnalyzeRequest,
     AnalyzeResult,
@@ -191,6 +192,17 @@ def _timelapse_frames(field_id: str, index: str) -> tuple[bytes, ...] | None:
     return _gif_frames(path, Path(path).stat().st_mtime)
 
 
+def _frame_months(field_id: str, n_frames: int) -> list[int] | None:
+    """Frames are the 12 monthly composites ending at the extract's end month
+    (tools/precompute_demo.py). Any other count means months were skipped: unknown."""
+    meta = read_json(f"demo_{field_id}_meta.json", from_mock=False) or {}
+    end = str(meta.get("end") or "")
+    if n_frames != 12 or len(end) < 7 or not end[5:7].isdigit():
+        return None
+    end_month = int(end[5:7])
+    return [(end_month - 12 + i) % 12 + 1 for i in range(12)]
+
+
 @router.get("/{field_id}", response_model=FieldDetail)
 def field_detail(field_id: str) -> FieldDetail:
     conditions = _conditions(field_id)
@@ -223,6 +235,7 @@ def field_detail(field_id: str) -> FieldDetail:
                 available=bool(frames),
                 frames=len(frames or ()),
                 size=size,
+                months=_frame_months(field_id, len(frames)) if frames else None,
                 message=None if frames else "Timelapse not available for this field yet.",
                 data_through=ndvi_through,
             )
@@ -402,14 +415,23 @@ def field_options(field_id: str, body: FieldOptionsRequest) -> FieldOptions:
     cards = generate_strategies(field_id, request).strategies
     climate_shifted = abs(body.rain_mult - 1.0) > 1e-6 or body.temp_offset > 1e-6
     compare, others, unsuitable = field_plan_groups(cards, climate_shifted=climate_shifted)
+    best = next((p for p in compare if p.role == "recommended"), None)
+    if best:
+        recommendation: str | None = best_fit_sentence(best.steps)
+    else:
+        recommendation = recommendation_sentence(cards) if cards else None
 
     return FieldOptions(
-        cash_choices=[CropChoice(id=o["id"], name=o["name"]) for o in cash_choices],
-        cover_choices=[CropChoice(id=o["id"], name=o["name"]) for o in cover_choices],
+        cash_choices=[
+            CropChoice(id=o["id"], name=o["name"], tone=crop_tone(o["id"])) for o in cash_choices
+        ],
+        cover_choices=[
+            CropChoice(id=o["id"], name=o["name"], tone=crop_tone(o["id"])) for o in cover_choices
+        ],
         cover=cover,
         slots=slots,
         farm_year=calendar_rows(calendar_items),
-        recommendation=recommendation_sentence(cards) if cards else None,
+        recommendation=recommendation,
         note=equal_note,
         compare=compare,
         others=others,

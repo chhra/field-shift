@@ -1,25 +1,34 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { FieldDetail } from "@/lib/types";
 import { PauseIcon, PlayIcon } from "./Icons";
+import { FULL_MONTHS, MONTHS } from "./YearStrip";
 import styles from "./Timelapse.module.css";
 
-interface Layer {
-  index: "ndvi" | "rgb";
-  label: string;
-  available: boolean;
-  frames: number;
-  size: [number, number] | null;
-  message: string | null;
-  data_through: string | null;
-}
+type Layer = FieldDetail["timelapse"][number];
 
-/** Monthly Sentinel-2 composites; month labels are burned into each frame. */
-export function Timelapse({ fieldId, layers }: { fieldId: string; layers: Layer[] }) {
+/**
+ * Monthly Sentinel-2 composites; month labels are burned into each frame. When the
+ * frames' months are known the player reports the month on screen (``onMonth``) and
+ * jumps to a month asked for from outside (``seek``), which links it to the chart.
+ */
+export function Timelapse({
+  fieldId,
+  layers,
+  seek = null,
+  onMonth,
+}: {
+  fieldId: string;
+  layers: Layer[];
+  seek?: number | null;
+  onMonth?: (month: number | null) => void;
+}) {
   const usable = layers.filter((l) => l.available);
   const [index, setIndex] = useState<Layer["index"]>(usable[0]?.index ?? "ndvi");
   const layer = layers.find((l) => l.index === index);
   const n = layer?.frames ?? 0;
+  const months = layer?.months ?? null;
   const [frame, setFrame] = useState(0);
   const [playing, setPlaying] = useState(false);
 
@@ -37,9 +46,22 @@ export function Timelapse({ fieldId, layers }: { fieldId: string; layers: Layer[
 
   useEffect(() => {
     if (!playing || n < 2) return;
-    const t = window.setInterval(() => setFrame((f) => (f + 1) % n), 800);
+    const t = window.setInterval(() => setFrame((f) => (f + 1) % n), 900);
     return () => window.clearInterval(t);
   }, [playing, n]);
+
+  useEffect(() => {
+    if (seek === null || !months) return;
+    const i = months.indexOf(seek);
+    if (i < 0) return;
+    setPlaying(false);
+    setFrame(i);
+  }, [seek, months]);
+
+  const month = months?.[frame] ?? null;
+  useEffect(() => {
+    onMonth?.(month);
+  }, [month, onMonth]);
 
   if (!layer || !layer.available) {
     return (
@@ -48,6 +70,8 @@ export function Timelapse({ fieldId, layers }: { fieldId: string; layers: Layer[
       </div>
     );
   }
+
+  const where = month ? FULL_MONTHS[month - 1] : `Frame ${frame + 1} of ${n}`;
 
   return (
     <div className={styles.player}>
@@ -75,7 +99,7 @@ export function Timelapse({ fieldId, layers }: { fieldId: string; layers: Layer[
       >
         <img
           src={`/api/fields/${fieldId}/timelapse/${index}/frames/${frame}`}
-          alt={`${layer.label}, frame ${frame + 1} of ${n}`}
+          alt={`${layer.label}, ${where}`}
           width={layer.size?.[0]}
           height={layer.size?.[1]}
         />
@@ -100,12 +124,10 @@ export function Timelapse({ fieldId, layers }: { fieldId: string; layers: Layer[
             setFrame(Number(e.target.value));
           }}
           className={styles.range}
-          aria-label="Month frame"
-          aria-valuetext={`Frame ${frame + 1} of ${n}`}
+          aria-label="Month"
+          aria-valuetext={where}
         />
-        <span className={styles.count}>
-          {frame + 1}/{n}
-        </span>
+        <span className={styles.count}>{month ? MONTHS[month - 1] : `${frame + 1}/${n}`}</span>
       </div>
       <p className="caption">
         Monthly cloud-masked Sentinel-2 composites

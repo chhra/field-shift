@@ -17,7 +17,14 @@ from fieldshift.engine.card_copy import (
 from fieldshift.models import StrategyCard
 from team_model import app_adapter, model
 
-from ui.year_strip import month_range, register_crop_meta, title_from_crops
+from ui.year_strip import (
+    fill_tone,
+    is_cover_crop,
+    month_range,
+    register_crop_meta,
+    short_name,
+    title_from_crops,
+)
 
 ROLE_EYEBROW = {
     "current": "Your rotation",
@@ -205,13 +212,32 @@ def uk_plans(results: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return plans
 
 
+def step_labels(crop_ids: list[str]) -> list[str]:
+    """Short crop names in rotation order, cover crops marked: the plan-card title."""
+    out: list[str] = []
+    for cid in crop_ids:
+        label = short_name(cid)
+        if is_cover_crop(cid) and "cover" not in label.lower():
+            label = f"{label} cover"
+        out.append(label)
+    return out
+
+
+def best_fit_sentence(steps: list[str]) -> str:
+    return (
+        f"{' → '.join(steps)} is the best fit for your priorities, "
+        "ahead of your current rotation."
+    )
+
+
+def uk_crop_tone(name: str) -> str:
+    """Calendar colour key for a UK model crop (crop pickers show it as a swatch)."""
+    return fill_tone((_uk_crop_id(name), False))
+
+
 def uk_recommendation_sentence(results: list[dict[str, Any]]) -> str | None:
     """Banner line for the UK options, or None when there is no alternative."""
     if len(results) < 2:
         return None
-    best = results[1]
-    years = best["years"]
-    return (
-        f"{best['rotation']} ({years} {'year' if years == 1 else 'years'}) is the "
-        "recommended option for your priorities, ahead of your current rotation."
-    )
+    items = uk_calendar_items(list(results[1].get("crops") or []))
+    return best_fit_sentence(step_labels([cid for cid, _months in items]))

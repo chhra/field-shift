@@ -1,6 +1,7 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import type { CSSProperties, ReactNode } from "react";
 import type { Choice, CropChoice, Plan, SoilKey, WaterKey } from "@/lib/types";
 import { SOIL_SWATCH, ThermoIcon, WATER_ICONS } from "./Icons";
 import { PlanGrid } from "./PlanCard";
@@ -45,23 +46,46 @@ export function CropSlots({
         {crops.map((crop, i) => (
           <label key={i} className={styles.slot}>
             <span className="field-label">Crop {i + 1}</span>
-            <select
-              className="select"
-              value={crop}
-              onChange={(e) => onPick(i, e.target.value)}
-            >
-              {!choices.some((c) => c.id === crop) && <option value={crop}>{crop}</option>}
-              {choices.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+            <CropSelect value={crop} choices={choices} onChange={(id) => onPick(i, id)} />
           </label>
         ))}
       </div>
       {children}
     </div>
+  );
+}
+
+/** Native select with the crop's calendar colour shown as a swatch. */
+export function CropSelect({
+  value,
+  choices,
+  onChange,
+  empty,
+}: {
+  value: string;
+  choices: CropChoice[];
+  onChange: (id: string) => void;
+  empty?: string;
+}) {
+  const picked = choices.find((c) => c.id === value);
+  const tone = picked?.tone;
+  return (
+    <span className={styles.cropSelect}>
+      <i
+        className={`${styles.swatch} ${tone ? "" : styles.swatchNone}`}
+        style={tone ? ({ "--tone": `var(--tone-${tone})` } as CSSProperties) : undefined}
+        aria-hidden="true"
+      />
+      <select className="select" value={value} onChange={(e) => onChange(e.target.value)}>
+        {empty !== undefined && <option value="">{empty}</option>}
+        {value && !picked && <option value={value}>{value}</option>}
+        {choices.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.name}
+          </option>
+        ))}
+      </select>
+    </span>
   );
 }
 
@@ -177,24 +201,38 @@ export function OptionsPanel({
   pending: boolean;
   error: string | null;
 }) {
+  const reduce = useReducedMotion();
+  const base = compare.find((p) => p.role === "current") ?? null;
   return (
     <div className={styles.options} aria-busy={pending} data-pending={pending}>
       <p className={styles.status} role="status">
         {pending ? "Updating your options…" : ""}
       </p>
       {error && <Banner tone="note">{error}</Banner>}
-      {recommendation && <Banner>{recommendation}</Banner>}
+      <AnimatePresence mode="wait" initial={false}>
+        {recommendation && (
+          <motion.div
+            key={recommendation}
+            initial={reduce ? false : { opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={reduce ? undefined : { opacity: 0 }}
+            transition={{ duration: reduce ? 0 : 0.18 }}
+          >
+            <Banner>{recommendation}</Banner>
+          </motion.div>
+        )}
+      </AnimatePresence>
       {note && <Banner tone="note">{note}</Banner>}
       {compare.length > 0 && (
         <>
           <h3 className={styles.groupTitle}>Compare your options</h3>
-          <PlanGrid plans={compare} />
+          <PlanGrid plans={compare} base={base} switcher />
         </>
       )}
       {others.length > 0 && (
         <>
           <h3 className={styles.groupTitle}>Other options worth considering</h3>
-          <PlanGrid plans={others} />
+          <PlanGrid plans={others} base={base} />
         </>
       )}
       {unsuitable.length > 0 && (
@@ -204,7 +242,7 @@ export function OptionsPanel({
               These fail a hard farm constraint or look clearly weaker than your current rotation
               for your priorities.
             </p>
-            <PlanGrid plans={unsuitable} showDetails={false} />
+            <PlanGrid plans={unsuitable} base={base} showDetails={false} />
           </Disclosure>
         </div>
       )}

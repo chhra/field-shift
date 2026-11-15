@@ -9,10 +9,11 @@ const LeafletMap = dynamic(() => import("./LeafletMap"), {
   loading: () => <div className={styles.placeholder} aria-hidden="true" />,
 });
 
-export function MapView(props: MapProps & { className?: string }) {
-  const { className, ...rest } = props;
+export function MapView(props: MapProps & { className?: string; flush?: boolean }) {
+  const { className, flush, ...rest } = props;
+  const cls = [styles.frame, flush ? styles.flush : "", className ?? ""].join(" ");
   return (
-    <div className={`${styles.frame} ${className ?? ""}`} style={{ height: props.height }}>
+    <div className={cls} style={{ height: props.height }}>
       <LeafletMap {...rest} />
     </div>
   );

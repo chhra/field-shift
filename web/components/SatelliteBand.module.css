@@ -1,0 +1,64 @@
+.band {
+  position: relative;
+}
+
+.imagery {
+  height: clamp(260px, 32vw, 440px);
+}
+
+.sheetWrap {
+  position: relative;
+  z-index: 1;
+}
+
+.sheet {
+  --pad: clamp(20px, 3vw, 40px);
+  margin: -120px calc(-1 * var(--pad)) 0;
+  padding: clamp(24px, 3.4vw, 40px) var(--pad) 0;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  background: var(--surface);
+}
+
+@media (max-width: 640px) {
+  .sheet {
+    margin-top: -48px;
+  }
+}
+
+.contents {
+  margin-top: 32px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.contents ol {
+  display: flex;
+  gap: 6px 26px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  white-space: nowrap;
+}
+
+.contents a {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 0;
+  color: var(--muted);
+  font-size: 14.5px;
+  text-decoration: none;
+}
+
+.contents a:hover {
+  color: var(--ink);
+}
+
+.contents a span {
+  color: var(--green);
+  font-weight: 600;
+  font-size: 13px;
+}

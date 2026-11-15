@@ -1,0 +1,26 @@
+.meter {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 2px;
+  width: 100%;
+}
+
+.meter i {
+  height: 8px;
+  border-radius: 2px;
+  background:
+    radial-gradient(circle at 1px 1px, rgba(120, 88, 48, 0.24) 0.8px, transparent 1.1px) 0 0 / 4px 4px,
+    var(--tone-bare);
+}
+
+.meter i[data-on="true"] {
+  background: var(--green);
+}
+
+.meter i:first-child {
+  border-radius: 4px 2px 2px 4px;
+}
+
+.meter i:last-child {
+  border-radius: 2px 4px 4px 2px;
+}

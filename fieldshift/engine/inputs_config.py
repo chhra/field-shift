@@ -189,8 +189,8 @@ GOAL_MEASURED: dict[str, str] = {
         "soil available water capacity (FAO-56 texture)."
     ),
     "forage": (
-        "Forage score from crops.json forage_value; counts only when this goal is "
-        "Important or Very important."
+        "Forage score from crops.json forage_value; counts only when Animal feed "
+        "is in your goal list."
     ),
     "nitrogen": (
         "Nitrogen score from legumes in the rotation (crops.json nitrogen_fixing)."
@@ -215,9 +215,9 @@ CROPS_CONFIRM_HINT = (
 )
 CROPS_WHY = "Your current crops are the baseline. Every option below is compared to this."
 GOALS_HINT = (
-    "Tap how much each goal matters. Options that match your answers rise in the ranking."
+    "Put the goals in order and remove any that don't matter. Your first goal counts most."
 )
-GOALS_WHY = "We re-score every rotation as soon as you change a goal — nothing to submit."
+GOALS_WHY = "Options update as soon as you change the order — nothing to submit."
 TWO_YEAR_LABEL = "My main crops take two years (for example maize, then soybean)"
 TWO_YEAR_HELP = (
     "Turn this on when two cash crops share one summer season across years. "
@@ -397,7 +397,7 @@ def rank_goal_weights(
 
 
 def forage_goal_active(importance: dict[str, int] | None) -> bool:
-    """Forage score counts only when Animal feed is Important or Very important."""
+    """Forage score counts only when Animal feed is in the farmer's goal list."""
     if not importance:
         return False
     return int(importance.get("forage", 0)) >= 1

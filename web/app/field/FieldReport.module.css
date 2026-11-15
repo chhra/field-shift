@@ -2,10 +2,6 @@
   padding-bottom: 24px;
 }
 
-.head {
-  padding-top: clamp(36px, 6vw, 64px);
-}
-
 .kicker {
   font-size: 15px;
   font-weight: 550;
@@ -13,11 +9,15 @@
 }
 
 .title {
-  margin-top: 10px;
-  font-size: clamp(36px, 5.4vw, 60px);
-  font-weight: 600;
-  letter-spacing: -0.035em;
+  margin-top: 8px;
+  font-size: clamp(34px, 5vw, 56px);
+  font-weight: 620;
+  letter-spacing: -0.04em;
   line-height: 1.02;
+}
+
+.title:first-child {
+  margin-top: 0;
 }
 
 .facts {
@@ -43,60 +43,27 @@
   font-weight: 500;
 }
 
-.contents {
-  margin-top: 36px;
-  padding: 14px 0;
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.contents ol {
-  display: flex;
-  gap: 6px 26px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  white-space: nowrap;
-}
-
-.contents a {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 8px;
-  padding: 6px 0;
-  color: var(--muted);
-  font-size: 14.5px;
-  text-decoration: none;
-}
-
-.contents a:hover {
-  color: var(--ink);
-}
-
-.contents a span {
-  color: var(--green);
-  font-weight: 600;
-  font-size: 13px;
-}
-
-.imagery {
+/* Timelapse and season chart side by side, linked by month. */
+.linkedView {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
-  gap: 28px;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: 24px clamp(24px, 3.4vw, 44px);
   align-items: start;
 }
 
-@media (max-width: 860px) {
-  .imagery {
+@media (max-width: 960px) {
+  .linkedView {
     grid-template-columns: minmax(0, 1fr);
   }
 }
 
+.linkHint {
+  margin-top: 10px;
+}
+
 .takeaway {
   max-width: var(--measure);
-  margin: 48px 0 24px;
+  margin: 48px 0 28px;
   font-size: clamp(19px, 2vw, 22px);
   line-height: 1.4;
   font-weight: 450;
@@ -104,7 +71,33 @@
 }
 
 .chartNotes {
-  margin-top: 20px;
+  margin-top: 24px;
+}
+
+/* The questions sit on a wash band so white inputs read as things to touch. */
+.inputs {
+  margin-top: clamp(56px, 8vw, 88px);
+  padding-bottom: clamp(56px, 8vw, 88px);
+  background: var(--wash);
+  box-shadow:
+    inset 0 1px 0 var(--line),
+    inset 0 -1px 0 var(--line);
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 0 clamp(32px, 4vw, 56px);
+}
+
+.questions {
+  min-width: 0;
+}
+
+@media (max-width: 1099px) {
+  .workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .demoNote {
@@ -112,7 +105,8 @@
   margin: -8px 0 36px;
   padding: 12px 16px;
   border-radius: var(--radius-m);
-  background: var(--wash);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--line);
   font-size: 15px;
   color: var(--muted);
 }
@@ -178,7 +172,10 @@
   margin-top: 28px;
   padding: 18px 18px 16px;
   border-radius: var(--radius-l);
-  background: var(--wash);
+  background: var(--surface);
+  box-shadow:
+    0 0 0 1px var(--line),
+    var(--shadow-s);
 }
 
 .farmYear h4 {
@@ -253,7 +250,12 @@
 .skeleton {
   display: grid;
   gap: 16px;
-  padding-top: 64px;
+  padding-top: 40px;
+}
+
+.skBand {
+  height: clamp(260px, 32vw, 440px);
+  background: linear-gradient(135deg, #cfd6c6, #b9c3ae);
 }
 
 .skLine,
