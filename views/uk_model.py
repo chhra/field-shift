@@ -9,17 +9,15 @@ from __future__ import annotations
 
 import json
 
-import pandas as pd
 import streamlit as st
 from fieldshift.engine.inputs_config import (
-    GOAL_KEYS,
-    GOAL_LABELS,
     QUESTIONS,
     default_goal_order,
 )
 from team_model import app_adapter, model
 from ui.components import fact_chips, hero, question, recommendation_banner, section
 from ui.goal_rank import goal_ranking
+from ui.strategy_cards import render_uk_option_plans
 
 _MONTHS = model.MONTHS
 _DEFAULT_ROTATION = [
@@ -30,12 +28,6 @@ _DEFAULT_ROTATION = [
     "Spring barley",
     "Sugar beet",
 ]
-# Score buckets that are not farmer priorities: fixed weights in model.score().
-_FIXED_BUCKETS = {
-    "sequence": ("Crop order (pests and diseases)", 2),
-    "climate": ("Climate fit, heat and frost", 1),
-    "change": ("Size of the change", 1),
-}
 _STATION_SUMMARY = model.DATA_DIR / "processed" / "climate" / "station_vs_nasa_rain_summary.json"
 
 
@@ -81,13 +73,6 @@ def _months(ms: list[int]) -> str:
     return ", ".join(_MONTHS[m - 1] for m in sorted(ms))
 
 
-def _bullets(lines: list[str], empty: str) -> None:
-    if not lines:
-        st.caption(empty)
-        return
-    st.markdown("\n".join(f"- {line}" for line in lines))
-
-
 # ----------------------------------------------------------------------------
 # Header and the field
 # ----------------------------------------------------------------------------
@@ -121,8 +106,8 @@ eff_lon = float(_lon) if at_location else None
 
 hero(
     "UK rotation model",
-    "Three crop rotations for one UK field, scored by rules a farmer can read.",
-    sub="Your current rotation, the best-scoring alternative, and a different second option.",
+    "Three crop rotations for one UK field: yours, a recommended option, and an alternative.",
+    sub="Compare the options side by side. Scores stay behind the scenes.",
     mode_label=(
         f"Your field · {float(_lat):.3f}, {float(_lon):.3f}"
         if at_location
@@ -194,7 +179,8 @@ if real_farm and _STATION_SUMMARY.exists():
             st.markdown(
                 f"NASA POWER rainfall is a model and satellite estimate averaged over a grid "
                 f"cell about 50 km wide. Rothamsted has measured rain with a gauge on this "
-                f"farm since 1853. Over {station['period']} ({station['months_compared']} months):\n\n"
+                f"farm since 1853. Over {station['period']} "
+                f"({station['months_compared']} months):\n\n"
                 f"- **Average:** NASA {station['mean_annual_rain_mm']['nasa_power']} mm a year, "
                 f"gauge {station['mean_annual_rain_mm']['station_corrected']} mm "
                 f"({agree['bias_pct']:+}%).\n"
@@ -290,7 +276,7 @@ warming = st.radio(
 
 section(
     "Your options",
-    "Each rotation is scored by the same rules. Every point comes from a sentence you can read.",
+    "Your rotation, the recommended option, and an alternative — compare them like plans.",
     step=3,
 )
 
@@ -309,58 +295,20 @@ except ValueError as err:
     st.stop()
 
 results = out["results"]
-priorities = out["priorities"]
 base = results[0]
-place = {g: i + 1 for i, g in enumerate(goal_order)}
 
 if len(results) > 1:
     best = results[1]
+    years = best["years"]
+    year_word = "year" if years == 1 else "years"
     recommendation_banner(
-        f"{best['rotation']} ({best['years']} year{'' if best['years'] == 1 else 's'}) "
-        f"scores {best['score']:g}, "
-        f"against {base['score']:g} for your current rotation."
+        f"{best['rotation']} ({years} {year_word}) is the recommended option "
+        f"for your priorities, ahead of your current rotation."
     )
 else:
     st.info(base["reasons"][-1] if base["reasons"] else "No alternative rotation was found.")
 
-card_cols = st.columns(len(results))
-for col, r in zip(card_cols, results, strict=True):
-    with col, st.container(border=True):
-        st.caption(f"{r['name']} · {r['years']} year{'' if r['years'] == 1 else 's'}")
-        st.markdown(f"**{r['rotation']}**")
-        is_base = r is base
-        st.metric(
-            "Score",
-            f"{r['score']:g}",
-            delta=None if is_base else f"{r['score'] - base['score']:+g} vs current",
-        )
-        with st.expander(f"Benefits ({len(r['benefits'])})", expanded=not is_base):
-            _bullets(r["benefits"], "None found.")
-        with st.expander(f"Risks ({len(r['risks'])})", expanded=is_base):
-            _bullets(r["risks"], "None found.")
-        with st.expander(f"Check locally ({len(r['checks'])})"):
-            _bullets(r["checks"], "Nothing flagged.")
-        with st.expander(f"Information gaps ({len(r['reasons'])})"):
-            _bullets(r["reasons"], "None.")
-
-st.markdown("**Where each score comes from**")
-st.caption(
-    "Points per rule group, already multiplied by your goal order. "
-    "Each column adds up to that rotation's score."
-)
-rows: dict[str, list[float]] = {}
-for gk in GOAL_KEYS:
-    bucket = app_adapter.GOAL_TO_PRIORITY[gk]
-    if gk in place:
-        label = f"{GOAL_LABELS[gk]} (#{place[gk]})"
-    else:
-        label = f"{GOAL_LABELS[gk]} (off)"
-    rows[label] = [round(r["points"][bucket] * priorities[bucket], 1) for r in results]
-for bucket, (label, weight) in _FIXED_BUCKETS.items():
-    rows[label] = [round(r["points"][bucket] * weight, 1) for r in results]
-rows["Total score"] = [r["score"] for r in results]
-table = pd.DataFrame(rows, index=[r["name"] for r in results]).T
-st.dataframe(table, use_container_width=True)
+render_uk_option_plans(results)
 
 # ----------------------------------------------------------------------------
 # Reliability
@@ -372,10 +320,10 @@ section(
     step=4,
 )
 st.markdown(
-    "- **Rules, not predictions.** Scores compare rotations with each other. They are not "
+    "- **Rules, not predictions.** Options are compared with each other. They are not "
     "yield or profit forecasts.\n"
     "- **Approximate values.** Sowing months, crop roles, forage and residue levels, and the "
-    "size of each rule's points are our estimates and need checking against AHDB guidance.\n"
+    "ranking rules are our estimates and need checking against AHDB guidance.\n"
     "- **Frost limits are harsh.** FAO EcoCrop gives one killing temperature per species; "
     "UK varieties are often hardier, so frost warnings for barley, clover and ryegrass are "
     "likely overstated.\n"

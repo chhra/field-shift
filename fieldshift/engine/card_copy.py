@@ -52,15 +52,17 @@ def format_delta_label(
     *,
     threshold: float = DELTA_NEUTRAL_THRESHOLD,
 ) -> tuple[str, str]:
-    """Return (display text, tone) for overall delta vs current rotation."""
+    """Return (display text, tone) for overall delta vs current rotation.
+
+    Qualitative only — numeric scores stay out of the farmer-facing UI.
+    """
     if delta is None:
         return "Compared to yours", "neutral"
     if abs(float(delta)) < threshold:
         return "About the same as yours", "neutral"
-    pts = score_points(float(delta))
-    if pts > 0:
-        return f"{pts} points higher than yours", "up"
-    return f"{abs(pts)} points lower than yours", "down"
+    if float(delta) > 0:
+        return "A better fit for your priorities", "up"
+    return "A weaker fit for your priorities", "down"
 
 
 def score_points(delta: float) -> int:

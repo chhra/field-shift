@@ -56,8 +56,8 @@ st.markdown(
 2. Derive bare months, stress months, frost window, water balance, trends.  
 3. Flag unusual seasons with an IsolationForest anomaly model (**SI**).  
 4. Generate rotation candidates (current + cover + swaps).  
-5. Score the **six farmer goals** and weight them by the order you put them in.  
-6. Explain each card with evidence, benefits, and local risks.  
+5. Rank options by the **six farmer goals** in the order you set (scores stay hidden).  
+6. Show your rotation, a recommended option, and an alternative with benefits and risks.  
 """
 )
 

@@ -17,6 +17,7 @@ WARNING = "#B26A00"
 DANGER = "#B23A3A"
 INFO = "#3A7CA5"
 CARD_BORDER = "#E6E6E6"
+PLAN_FEATURED_FILL = "#F7FBF6"
 HAIRLINE = CARD_BORDER
 FOCUS = "#2F5E2C"
 CARD_RADIUS = "6px"
@@ -98,7 +99,7 @@ CONTRAST_PAIRS: list[tuple[str, str, str, float]] = [
     ("text_on_sidebar", TEXT, SIDEBAR, 4.5),
 ]
 
-_THEME_VERSION = "goal-ranking-v3"
+_THEME_VERSION = "option-plans-v1"
 
 
 def inject_nav_active(active_path: str) -> None:
@@ -855,209 +856,126 @@ p.fs-mix-title {{
   margin: 24px 0 12px 0;
 }}
 
-/* Strategy cards — even columns, shared score figure */
-.fs-strat {{
-  margin: 0;
-  padding: 16px 8px 12px 0;
-  border-top: 1px solid {CARD_BORDER};
-  overflow: visible;
+/* Option plans — subscription-style comparison boxes (no scores) */
+.fs-plan {{
   display: flex;
   flex-direction: column;
   height: 100%;
-  min-height: 520px;
+  min-height: 420px;
+  margin: 0;
+  padding: 20px 18px 16px;
+  border: 1px solid {CARD_BORDER};
+  border-radius: 14px;
+  background: {SURFACE};
 }}
-.fs-tier-kicker {{
+.fs-plan--featured {{
+  border-color: {PRIMARY};
+  box-shadow: 0 0 0 1px {PRIMARY};
+  background: {PLAN_FEATURED_FILL};
+}}
+.fs-plan--muted {{
+  opacity: 0.78;
+}}
+.fs-plan-eyebrow {{
+  margin: 0 0 6px 0;
   font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.03em;
+  font-weight: 700;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: {MUTED};
-  margin: 0 0 8px 0;
-  min-height: 1.2em;
 }}
-.fs-best-badge {{
+.fs-plan--featured .fs-plan-eyebrow {{
+  color: {PRIMARY};
+}}
+.fs-plan-badge {{
   display: inline-block;
+  width: fit-content;
+  margin: 0 0 10px 0;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: {PRIMARY};
+  color: {SURFACE};
   font-size: 12px;
   font-weight: 600;
-  color: {PRIMARY};
-  background: #E8F2E7;
-  padding: 2px 8px;
-  border-radius: 6px;
-  margin: 0 0 8px 0;
-  width: fit-content;
 }}
-.fs-strat-title {{
-  font-size: 16px;
-  font-weight: 600;
-  color: {TEXT};
+.fs-plan-title {{
   margin: 0;
+  font-size: 17px;
+  font-weight: 650;
   line-height: 1.35;
+  color: {TEXT};
   min-height: 2.7em;
-  overflow: visible;
 }}
-.fs-tier-reason {{
+.fs-plan-meta {{
+  margin: 6px 0 0 0;
   font-size: 13px;
   color: {MUTED};
-  margin: 8px 0 0;
+}}
+.fs-plan-blurb {{
+  margin: 12px 0 0 0;
+  font-size: 13.5px;
   line-height: 1.45;
+  color: {MUTED};
   min-height: 3.9em;
 }}
-.fs-strat-flags {{
-  min-height: 20px;
-  margin: 8px 0;
-  font-size: 13px;
-  color: {MUTED};
-  line-height: 1.35;
-}}
-.fs-strat-flags .bad {{ color: {DANGER}; }}
-
-.fs-overall {{
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 16px;
-  margin: 16px 0 8px 0;
-  padding: 0;
-  background: transparent;
-  border: none;
-  min-height: 52px;
-}}
-.fs-overall-label {{
-  font-size: 13px;
-  color: {MUTED};
-  font-weight: 500;
-  margin: 0 0 2px 0;
-}}
-.fs-overall-num {{
-  font-size: 36px;
-  font-weight: 600;
-  color: {TEXT};
-  line-height: 1.1;
-  font-variant-numeric: tabular-nums;
-}}
-.fs-card-delta {{
-  font-size: 13px;
-  font-weight: 500;
-  padding: 0;
-  border-radius: 0;
-  white-space: nowrap;
-  background: transparent !important;
-  text-align: right;
-}}
-.fs-card-delta.up {{ color: {PRIMARY}; }}
-.fs-card-delta.down {{ color: {DANGER}; }}
-.fs-card-delta.flat {{ color: {MUTED}; }}
-.fs-card-note {{
-  font-size: 13px;
-  color: {MUTED};
-  margin: 0 0 8px 0;
-}}
-.fs-card-spacer {{
-  flex: 1 1 auto;
-  min-height: 8px;
-}}
-.fs-score-heading {{
+.fs-plan-feat-label {{
+  margin: 18px 0 8px 0;
   font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.03em;
+  font-weight: 700;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: {MUTED};
-  margin: 12px 0 8px 0;
 }}
-.fs-score-grid {{
+.fs-plan-features {{
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin: 0 0 12px 0;
-  min-height: 168px;
+  flex: 1 1 auto;
 }}
-.fs-score-row {{
+.fs-plan-features li {{
   display: flex;
-  flex-direction: column;
-  gap: 3px;
-}}
-.fs-score-top {{
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
   gap: 8px;
-}}
-.fs-score-name {{
-  font-size: 12px;
-  font-weight: 500;
+  align-items: flex-start;
+  font-size: 13.5px;
+  line-height: 1.4;
   color: {TEXT};
 }}
-.fs-score-pct {{
-  font-size: 12px;
-  font-weight: 600;
+.fs-plan-tick {{
+  flex: none;
+  color: {PRIMARY};
+  font-weight: 700;
+}}
+.fs-plan-empty {{
+  margin: 0;
+  font-size: 13px;
   color: {MUTED};
-  font-variant-numeric: tabular-nums;
 }}
-.fs-score-track {{
-  height: 6px;
-  background: {SIDEBAR};
-  border-radius: 3px;
-  overflow: hidden;
-}}
-.fs-score-fill {{
-  height: 100%;
-  border-radius: 3px;
-  min-width: 2px;
-}}
-.fs-compare-note {{
-  font-size: 12px;
+.fs-plan-flags {{
+  margin: 10px 0 0 0;
+  font-size: 13px;
   color: {MUTED};
-  margin: 0 0 8px 0;
-  min-height: 3.6em;
-  line-height: 1.4;
-}}
-.fs-diff-list {{
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin: 0 0 8px 0;
-  min-height: 3.6em;
-}}
-.fs-diff-line {{
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  align-items: baseline;
-  font-size: 12px;
   line-height: 1.35;
 }}
-.fs-diff-name {{
-  font-weight: 500;
-  color: {TEXT};
-}}
-.fs-diff-band {{
-  color: {MUTED};
-  flex-shrink: 0;
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-}}
-.fs-conf {{
-  font-size: 12px;
-  color: {MUTED};
-  margin: 8px 0 0 0;
-  letter-spacing: 0.01em;
-}}
+.fs-plan-flags.bad {{ color: {DANGER}; }}
 
 /* Equal-height option / demo columns */
 div[data-testid="stHorizontalBlock"] {{
   align-items: flex-start !important;
   gap: 24px !important;
 }}
-div[data-testid="stHorizontalBlock"]:has(.fs-strat),
+div[data-testid="stHorizontalBlock"]:has(.fs-plan),
 div[data-testid="stHorizontalBlock"]:has(.fs-demo-copy) {{
   align-items: stretch !important;
 }}
-div[data-testid="stHorizontalBlock"]:has(.fs-strat) > div[data-testid="stColumn"],
+div[data-testid="stHorizontalBlock"]:has(.fs-plan) > div[data-testid="stColumn"],
 div[data-testid="stHorizontalBlock"]:has(.fs-demo-copy) > div[data-testid="stColumn"] {{
   display: flex !important;
   flex-direction: column;
 }}
-div[data-testid="stHorizontalBlock"]:has(.fs-strat) > div[data-testid="stColumn"] > div,
+div[data-testid="stHorizontalBlock"]:has(.fs-plan) > div[data-testid="stColumn"] > div,
 div[data-testid="stHorizontalBlock"]:has(.fs-demo-copy) > div[data-testid="stColumn"] > div {{
   flex: 1 1 auto;
   display: flex;

@@ -616,7 +616,7 @@ def _farm_block() -> None:
 
         section(
             "Your options",
-            "Each option shows its farming year and the same six goal scores.",
+            "Compare your rotation with the recommended and alternative options.",
             step=5,
         )
         req = StrategyRequest(

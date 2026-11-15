@@ -51,9 +51,9 @@ def test_format_delta_neutral() -> None:
     assert "same" in text.lower()
 
 
-def test_format_delta_uses_card_points() -> None:
-    assert format_delta_label(0.05) == ("5 points higher than yours", "up")
-    assert format_delta_label(-0.054) == ("5 points lower than yours", "down")
+def test_format_delta_is_qualitative() -> None:
+    assert format_delta_label(0.05) == ("A better fit for your priorities", "up")
+    assert format_delta_label(-0.054) == ("A weaker fit for your priorities", "down")
 
 
 def test_farmer_sentence_tradeoff() -> None:

@@ -1,81 +1,23 @@
-"""Strategy card rendering — even comparison grid, flat Streamlit-demo style."""
+"""Strategy options as subscription-style comparison boxes — scores stay hidden."""
 
 from __future__ import annotations
 
-import html
 from typing import Any
 
 import streamlit as st
 from fieldshift.engine.card_copy import (
     SCORE_KEYS,
     farmer_comparison_sentence,
-    format_delta_label,
     rotation_title_line,
-    score_points,
     top_criterion_diffs,
 )
-from fieldshift.models import ScoreSet, StrategyCard
+from fieldshift.models import StrategyCard
 
-from ui.charts import scores_bar
+from ui.option_plans import render_comparison_plans
 from ui.source_caption import source_caption
-from ui.theme import PRIMARY, SCORE_COLORS
 from ui.year_strip import rows_from_sequence, year_strip_html
 
 _TIER_ORDER = ("baseline", "best_fit", "worth_considering", "not_suitable")
-
-_CRITERIA: list[tuple[str, str]] = [
-    ("water", "Use less water"),
-    ("forage", "Animal feed"),
-    ("nitrogen", "Add nitrogen"),
-    ("erosion", "Reduce erosion"),
-    ("organic_matter", "Organic matter"),
-    ("market", "Good market"),
-]
-
-_TIER_KICKER = {
-    "baseline": "◎ Your rotation",
-    "best_fit": "✓ Best fit",
-    "worth_considering": "◇ Worth considering",
-    "not_suitable": "✗ Not suitable",
-}
-
-
-def render_score_legend() -> None:
-    st.caption(
-        "Scores are **0–100**. Higher is better. "
-        "Cards use the same score figure so you can compare options side by side."
-    )
-    with st.expander("What each score and tier means", expanded=False):
-        st.markdown(
-            """
-| Tier | Meaning |
-|------|---------|
-| **✓ Best fit** | Highest overall, beats your rotation by ≥0.02, passes constraints |
-| **◇ Worth considering** | Passes constraints; near the best or wins on your top priority |
-| **◎ Your rotation today** | Baseline you entered |
-| **✗ Not suitable here** | Fails a hard constraint or is clearly weaker than today |
-
-| Band | Score (0–100) |
-|------|----------------|
-| **Strong** | 75–100 |
-| **Good** | 55–74 |
-| **Fair** | 35–54 |
-| **Weak** | 0–34 |
-
-| Goal | What it measures |
-|------|------------------|
-| **Use less water** | Crop demand vs rain + irrigation, soil AWC |
-| **Animal feed** | Forage value (only if this goal is Important+) |
-| **Add nitrogen** | Legumes in the rotation |
-| **Reduce erosion** | Bare months × slope × heavy rain, crop cover |
-| **Build organic matter** | Residue, roots, months of cover |
-| **Good market** | crops.json market tier |
-
-**Delta display:** changes are shown in points on the same 0–100 scale. If the
-overall change vs your rotation is under **2 points**, the card shows “About the
-same as yours”.
-            """
-        )
 
 
 def render_strategy_cards(
@@ -83,12 +25,10 @@ def render_strategy_cards(
     *,
     show_climate_delta: bool = False,
 ) -> None:
-    """Render options in an even multi-column comparison grid."""
+    """Render Field-page options as plan boxes. Engine scores are not shown."""
     if not cards:
         st.info("No strategies available.")
         return
-
-    render_score_legend()
 
     baseline = next((c for c in cards if c.tier == "baseline"), None)
     baseline_scores = baseline.scores if baseline else None
@@ -98,39 +38,49 @@ def render_strategy_cards(
         tier = card.tier or "worth_considering"
         by_tier.setdefault(tier, []).append(card)
 
-    # Primary compare row: always fill 2 equal columns for easy side-by-side reading
     compare: list[StrategyCard] = []
     if baseline:
         compare.append(baseline)
     compare.extend(by_tier.get("best_fit") or [])
     others = list(by_tier.get("worth_considering") or [])
-    while len(compare) < 2 and others:
+    while len(compare) < 3 and others:
         compare.append(others.pop(0))
 
     if compare:
         st.markdown(
-            '<p class="fs-options-label">Compare side by side</p>',
+            '<p class="fs-options-label">Compare your options</p>',
             unsafe_allow_html=True,
         )
-        _even_grid(
-            compare,
-            cols_per_row=2,
-            baseline_scores=baseline_scores,
-            show_climate_delta=show_climate_delta,
+        render_comparison_plans(
+            [
+                _card_to_plan(
+                    c,
+                    baseline_scores=baseline_scores,
+                    show_climate_delta=show_climate_delta,
+                    alt_index=i,
+                )
+                for i, c in enumerate(compare)
+            ],
+            details_fn=_field_details,
             allow_expanders=True,
         )
 
-    # Remaining worth-considering options — even 2-column grid
     if others:
         st.markdown(
             '<p class="fs-options-label">Other options worth considering</p>',
             unsafe_allow_html=True,
         )
-        _even_grid(
-            others,
-            cols_per_row=2,
-            baseline_scores=baseline_scores,
-            show_climate_delta=show_climate_delta,
+        render_comparison_plans(
+            [
+                _card_to_plan(
+                    c,
+                    baseline_scores=baseline_scores,
+                    show_climate_delta=show_climate_delta,
+                    alt_index=i + 1,
+                )
+                for i, c in enumerate(others)
+            ],
+            details_fn=_field_details,
             allow_expanders=True,
         )
 
@@ -141,217 +91,165 @@ def render_strategy_cards(
             expanded=False,
         ):
             st.caption(
-                "These fail a hard farm constraint or score clearly below "
+                "These fail a hard farm constraint or look clearly weaker than "
                 "your current rotation for your priorities."
             )
-            _even_grid(
-                bad,
-                cols_per_row=2,
-                baseline_scores=baseline_scores,
-                show_climate_delta=show_climate_delta,
+            render_comparison_plans(
+                [
+                    _card_to_plan(
+                        c,
+                        baseline_scores=baseline_scores,
+                        show_climate_delta=show_climate_delta,
+                        alt_index=0,
+                    )
+                    for c in bad
+                ],
+                details_fn=None,
                 allow_expanders=False,
             )
 
 
-def _even_grid(
-    cards: list[StrategyCard],
-    *,
-    cols_per_row: int,
-    baseline_scores: ScoreSet | None,
-    show_climate_delta: bool,
-    allow_expanders: bool = True,
-) -> None:
-    """Render cards in fixed-width columns so every figure stays even."""
-    if not cards:
-        return
-    n_cols = max(2, min(cols_per_row, 3))
-    for i in range(0, len(cards), n_cols):
-        chunk = cards[i : i + n_cols]
-        cols = st.columns(n_cols, gap="large")
-        for col, card in zip(cols, chunk, strict=False):
-            with col:
-                _render_one_card(
-                    card,
-                    baseline_scores=baseline_scores,
-                    show_climate_delta=show_climate_delta,
-                    allow_expanders=allow_expanders,
-                )
-
-
-def _scores_figure_html(scores: ScoreSet) -> str:
-    """Same 6-bar score figure on every card for even visual comparison."""
-    parts: list[str] = []
-    for key, label in _CRITERIA:
-        val = float(getattr(scores, key, 0.0) or 0.0)
-        pct = int(round(max(0.0, min(1.0, val)) * 100))
-        color = SCORE_COLORS.get(key, PRIMARY)
-        parts.append(
-            f"""
-<div class="fs-score-row">
-  <div class="fs-score-top">
-    <span class="fs-score-name">{html.escape(label)}</span>
-    <span class="fs-score-pct">{pct}</span>
-  </div>
-  <div class="fs-score-track">
-    <div class="fs-score-fill" style="width:{pct}%;background:{color};"></div>
-  </div>
-</div>
-            """
-        )
-    return '<div class="fs-score-grid">' + "".join(parts) + "</div>"
-
-
-def _top3_html(diffs: list[dict[str, Any]]) -> str:
-    parts: list[str] = []
-    for d in diffs:
-        pts = abs(score_points(d["delta"]))
-        if d["direction"] == "better":
-            verb = f"{pts} pts better"
-        elif d["direction"] == "worse":
-            verb = f"{pts} pts lower"
-        else:
-            verb = "similar"
-        parts.append(
-            f'<div class="fs-diff-line">'
-            f'<span class="fs-diff-name">{html.escape(d["label"])}</span>'
-            f'<span class="fs-diff-band">{html.escape(verb)} · '
-            f'{html.escape(d["band"])}</span>'
-            f"</div>"
-        )
-    return '<div class="fs-diff-list">' + "".join(parts) + "</div>"
-
-
-def _render_one_card(
+def _card_to_plan(
     card: StrategyCard,
     *,
-    baseline_scores: ScoreSet | None,
+    baseline_scores: Any,
     show_climate_delta: bool,
-    allow_expanders: bool = True,
-) -> None:
-    delta = card.delta_vs_current.get("total")
-    total_pct = int(round(max(0.0, min(1.0, card.scores.total)) * 100))
+    alt_index: int,
+) -> dict[str, Any]:
     tier = card.tier or "worth_considering"
-    title = rotation_title_line(card.sequence)
-    kicker = card.tier_label or _TIER_KICKER.get(tier, tier)
-
-    diffs = top_criterion_diffs(card.scores, baseline_scores, n=3)
     if tier == "baseline":
-        sentence = "This is the rotation you said you grow today."
-        compare_html = (
-            '<p class="fs-compare-note">Baseline — compare bars with the option beside it.</p>'
+        role = "current"
+        blurb = "This is the rotation you said you grow today."
+    elif tier == "best_fit":
+        role = "recommended"
+        diffs = top_criterion_diffs(card.scores, baseline_scores, n=3)
+        blurb = farmer_comparison_sentence(
+            diffs, overall_delta=card.delta_vs_current.get("total")
         )
+    elif tier == "not_suitable":
+        role = "unsuitable"
+        blurb = card.tier_reason or "Not a fit for this field under your priorities."
     else:
-        sentence = farmer_comparison_sentence(diffs, overall_delta=delta)
-        compare_html = _top3_html(diffs) if diffs else ""
-
-    if tier == "baseline":
-        delta_html = (
-            '<div class="fs-card-delta flat">Your starting point</div>'
-        )
-    else:
-        delta_text, delta_tone = format_delta_label(delta)
-        delta_cls = {"up": "up", "down": "down", "neutral": "flat"}[delta_tone]
-        arrow = "↑ " if delta_tone == "up" else ("↓ " if delta_tone == "down" else "")
-        delta_html = (
-            f'<div class="fs-card-delta {delta_cls}">'
-            f"{arrow}{html.escape(delta_text)}</div>"
+        role = "alternative" if alt_index <= 1 else "other"
+        diffs = top_criterion_diffs(card.scores, baseline_scores, n=3)
+        blurb = farmer_comparison_sentence(
+            diffs, overall_delta=card.delta_vs_current.get("total")
         )
 
-    conf = (card.confidence or "medium").lower()
-    conf_icons = {"high": "●●●", "medium": "●●○", "low": "●○○"}
-    conf_icon = conf_icons.get(conf, "●●○")
+    if show_climate_delta and tier not in ("baseline", "not_suitable"):
+        blurb = f"{blurb} Climate scenario applied."
 
-    badge = ""
-    if tier == "best_fit":
-        badge = '<span class="fs-best-badge">Recommended</span>'
-
-    climate_bit = ""
-    if show_climate_delta and delta is not None and tier != "baseline":
-        climate_bit = (
-            f'<p class="fs-card-note">Climate scenario applied · '
-            f"change {score_points(delta):+d} points</p>"
-        )
-
-    flags = ""
+    flags: list[str] = []
+    flag_tone = "note"
     if card.unsuitable_reasons:
-        flags = (
-            '<div class="fs-strat-flags">'
-            + "".join(
-                f'<div class="bad">✗ {html.escape(r)}</div>'
-                for r in card.unsuitable_reasons
-            )
-            + "</div>"
-        )
+        flags = list(card.unsuitable_reasons)
+        flag_tone = "bad"
     elif card.soft_notes:
-        flags = (
-            '<div class="fs-strat-flags">'
-            + "".join(f"<div>· {html.escape(n)}</div>" for n in card.soft_notes)
-            + "</div>"
+        flags = list(card.soft_notes)
+
+    return {
+        "key": card.id,
+        "role": role,
+        "title": rotation_title_line(card.sequence),
+        "meta": card.name if card.name != rotation_title_line(card.sequence) else "",
+        "blurb": blurb,
+        "features": list(card.benefits or [])[:5],
+        "calendar_html": year_strip_html(
+            rows_from_sequence(card.sequence), compact=True
+        ),
+        "featured": tier == "best_fit",
+        "flags": flags,
+        "flag_tone": flag_tone,
+        "_card": card,
+    }
+
+
+def _field_details(plan: dict[str, Any]) -> None:
+    card: StrategyCard = plan["_card"]
+    st.markdown("**Why this option**")
+    st.write(card.why)
+    if card.benefits:
+        st.markdown("**Benefits**")
+        for b in card.benefits:
+            st.write(f"• {b}")
+    if card.evidence:
+        st.markdown("**Evidence**")
+        for item in card.evidence:
+            st.markdown(f"• {item.text}")
+            source_caption(item.source, getattr(item, "data_through", None))
+    if card.data_gaps:
+        st.markdown("**Data gaps**")
+        for g in card.data_gaps:
+            st.write(f"• {g}")
+    if card.risks_for_local_review:
+        st.markdown("**Risks to check locally**")
+        for r in card.risks_for_local_review:
+            st.write(f"• {r}")
+    conf = (card.confidence or "medium").lower()
+    st.caption(f"Confidence in this comparison: {conf}")
+    source_caption("Field Shift engine")
+
+
+def render_uk_option_plans(results: list[dict[str, Any]]) -> None:
+    """UK-model results as the same plan boxes (current / recommended / alternative)."""
+    if not results:
+        st.info("No options to compare yet.")
+        return
+
+    plans: list[dict[str, Any]] = []
+    for i, r in enumerate(results):
+        if i == 0:
+            role = "current"
+            blurb = "Your starting rotation for this field."
+            featured = False
+        elif i == 1:
+            role = "recommended"
+            blurb = "Best match for the priorities you set above."
+            featured = True
+        else:
+            role = "alternative"
+            blurb = "A different path that still fits your priorities."
+            featured = False
+        years = r.get("years") or 0
+        year_word = "year" if years == 1 else "years"
+        plans.append(
+            {
+                "key": f"ukm-{i}",
+                "role": role,
+                "title": r.get("rotation") or r.get("name") or "—",
+                "meta": f"{years} {year_word}",
+                "blurb": blurb,
+                "features": list(r.get("benefits") or [])[:5],
+                "featured": featured,
+                "_uk": r,
+            }
         )
 
-    st.markdown(
-        f"""
-<div class="fs-strat">
-  <p class="fs-tier-kicker">{html.escape(kicker)}</p>
-  {badge}
-  <p class="fs-strat-title">{html.escape(title)}</p>
-  {year_strip_html(rows_from_sequence(card.sequence), compact=True)}
-  <p class="fs-tier-reason">{html.escape(sentence)}</p>
-  {flags}
-  <div class="fs-overall">
-    <div>
-      <div class="fs-overall-label">Overall</div>
-      <div class="fs-overall-num">{total_pct}</div>
-    </div>
-    {delta_html}
-  </div>
-  {climate_bit}
-  <p class="fs-score-heading">Scores at a glance</p>
-  {_scores_figure_html(card.scores)}
-  {compare_html}
-  <div class="fs-card-spacer" aria-hidden="true"></div>
-  <p class="fs-conf">{conf_icon} Confidence: {html.escape(conf)}</p>
-</div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    def _details() -> None:
-        st.caption("All criteria (0–100)")
-        st.plotly_chart(
-            scores_bar(card.scores, height=180),
-            use_container_width=True,
-            config={"displayModeBar": False},
-            key=f"strat-scores-{card.id}",
-        )
-        st.markdown("**Why this option**")
-        st.write(card.why)
-        if card.benefits:
-            st.markdown("**Benefits**")
-            for b in card.benefits:
-                st.write(f"• {b}")
-        if card.evidence:
-            st.markdown("**Evidence**")
-            for item in card.evidence:
-                st.markdown(f"• {item.text}")
-                source_caption(
-                    item.source, getattr(item, "data_through", None)
-                )
-        if card.data_gaps:
-            st.markdown("**Data gaps**")
-            for g in card.data_gaps:
-                st.write(f"• {g}")
-        if card.risks_for_local_review:
-            st.markdown("**Risks to check locally**")
-            for r in card.risks_for_local_review:
-                st.write(f"• {r}")
-        source_caption("Field Shift scoring engine")
-
-    if allow_expanders:
-        with st.expander("Why, evidence and risks", expanded=False):
-            _details()
-    else:
-        st.caption(card.why)
+    render_comparison_plans(plans, details_fn=_uk_details, allow_expanders=True)
 
 
-__all__ = ["SCORE_KEYS", "render_strategy_cards", "render_score_legend"]
+def _uk_details(plan: dict[str, Any]) -> None:
+    r = plan["_uk"]
+    if r.get("benefits"):
+        st.markdown("**Benefits**")
+        for b in r["benefits"]:
+            st.write(f"• {b}")
+    if r.get("risks"):
+        st.markdown("**Risks**")
+        for b in r["risks"]:
+            st.write(f"• {b}")
+    if r.get("checks"):
+        st.markdown("**Check locally**")
+        for b in r["checks"]:
+            st.write(f"• {b}")
+    if r.get("reasons"):
+        st.markdown("**Information gaps**")
+        for b in r["reasons"]:
+            st.write(f"• {b}")
+
+
+__all__ = [
+    "SCORE_KEYS",
+    "render_strategy_cards",
+    "render_uk_option_plans",
+]

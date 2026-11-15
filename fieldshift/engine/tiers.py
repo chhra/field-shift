@@ -138,7 +138,7 @@ def assign_tiers(
 
 
 def recommendation_sentence(cards: list[StrategyCard]) -> str:
-    """One plain sentence for the recommendation banner."""
+    """One plain sentence for the recommendation banner — no numeric scores."""
     best = next((c for c in cards if c.tier == "best_fit"), None)
     baseline = next((c for c in cards if c.tier == "baseline"), None)
     if best is None:
@@ -146,10 +146,7 @@ def recommendation_sentence(cards: list[StrategyCard]) -> str:
             "Your current rotation is already a good fit for your priorities "
             "— no alternative clearly beats it under these settings."
         )
-    delta = best.delta_vs_current.get("total")
-    delta_bit = f" ({delta:+.2f} vs today)" if delta is not None else ""
     base_name = baseline.name if baseline else "your current rotation"
     return (
-        f"{best.name} is the best fit for your priorities{delta_bit}, "
-        f"ahead of {base_name}."
+        f"{best.name} is the best fit for your priorities, ahead of {base_name}."
     )
