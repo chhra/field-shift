@@ -41,6 +41,10 @@ WATER_HELP = (
     "choose “Some irrigation”. If canals or wells cover the whole season, "
     "choose “Fully irrigated”."
 )
+WATER_WHY = (
+    "We use this to drop crops that need a full irrigation season when you are "
+    "rain-only, and to score water use fairly."
+)
 
 # Limited irrigation: documented fractional water allowance added to rainfed
 # baseline before GRACE penalty (see score_water). needs_expert_review: True
@@ -85,6 +89,10 @@ SOIL_HINT = (
 SOIL_HELP = (
     "Example: if a moist ribbon of soil feels gritty and falls apart, pick Sandy. "
     "If it feels sticky and holds a long ribbon, pick Clay."
+)
+SOIL_WHY = (
+    "Soil feel tells us how much rain the ground can store between showers, "
+    "and how easily water soaks in."
 )
 
 # Total available water (TAW) midpoints from FAO-56 Table 19 ranges (mm water / m soil).
@@ -164,6 +172,16 @@ GOAL_HINTS: dict[str, str] = {
     "market": "Do you need the crops to sell well?",
 }
 
+# One plain sentence per goal — what the score means for a farmer (not the formula).
+GOAL_PLAIN: dict[str, str] = {
+    "water": "Favours rotations that need less irrigation or hold more rain in the soil.",
+    "forage": "Favours crops animals can graze or eat — only when you say this matters.",
+    "nitrogen": "Favours legumes that put nitrogen back into the soil for the next crop.",
+    "erosion": "Favours cover that keeps soil from washing or blowing when fields are bare.",
+    "organic_matter": "Favours residues and roots that build darker, richer soil over years.",
+    "market": "Favours crops that usually sell more easily in typical markets.",
+}
+
 GOAL_MEASURED: dict[str, str] = {
     "water": (
         "Crop water demand (FAO-56 ET0 from NASA POWER × crop coefficient) minus "
@@ -186,6 +204,26 @@ GOAL_MEASURED: dict[str, str] = {
     ),
     "market": "Market score from crops.json market_tier.",
 }
+
+# Farmer-facing block intros (UI).
+FIELD_CONFIRM_HINT = (
+    "This is the polygon satellites watch — drawn on the map or opened from a demo."
+)
+CROPS_CONFIRM_HINT = (
+    "Satellites already spotted your growing seasons. Confirm the crop in each season — "
+    "change only if that is wrong."
+)
+CROPS_WHY = "Your current crops are the baseline. Every option below is compared to this."
+GOALS_HINT = (
+    "Tap how much each goal matters. Options that match your answers rise in the ranking."
+)
+GOALS_WHY = "We re-score every rotation as soon as you change a goal — nothing to submit."
+TWO_YEAR_LABEL = "My main crops take two years (for example maize, then soybean)"
+TWO_YEAR_HELP = (
+    "Turn this on when two cash crops share one summer season across years. "
+    "Leave it off when two seasons fit in one year (for example rice then wheat)."
+)
+MONTHS_EXPANDER_LABEL = "Change planting or harvest months (only if satellites got them wrong)"
 
 IMPORTANCE_LABELS: dict[int, str] = {
     0: "Not important",

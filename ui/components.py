@@ -167,7 +167,12 @@ def weights_bar(weights: dict[str, float]) -> None:
             "color": TEXT,
         },
     )
-    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+    st.plotly_chart(
+        fig,
+        use_container_width=True,
+        config={"displayModeBar": False},
+        key="goal-weights-bar",
+    )
 
 
 def demo_field_cards(

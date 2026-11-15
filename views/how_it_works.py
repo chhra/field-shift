@@ -10,6 +10,7 @@ from fieldshift.engine.inputs_config import (
     GOAL_KEYS,
     GOAL_LABELS,
     GOAL_MEASURED,
+    GOAL_PLAIN,
     IMPORTANCE_LABELS,
     LIMITED_IRRIGATION_ALLOWANCE,
     SOIL_AWC_MM_PER_M,
@@ -17,8 +18,10 @@ from fieldshift.engine.inputs_config import (
     SOIL_INFILTRATION_MM_H,
     SOIL_LABELS,
     SOIL_TEXTURE_META,
+    SOIL_WHY,
     WATER_HINT,
     WATER_LABELS,
+    WATER_WHY,
 )
 from fieldshift.services import list_sources, using_mock_data
 from ui.charts import pipeline_figure
@@ -34,7 +37,7 @@ hero(
     "How it works",
     "Field Shift turns NASA and partner Earth observations into a rotation advisory "
     "you can check against local knowledge.",
-    sub="Five farm inputs, six goals, and the numbers behind each category.",
+    sub="Five plain farm questions, six goals in everyday language, then the formulas.",
     mode_label="Methods & data",
     live=True,
     eyebrow="Mission documentation",
@@ -45,6 +48,7 @@ st.plotly_chart(
     pipeline_figure(),
     use_container_width=True,
     config={"displayModeBar": False},
+    key="how-pipeline-chart",
 )
 st.markdown(
     """
@@ -59,19 +63,21 @@ st.markdown(
 
 section(
     "The five inputs",
-    "Categories only — each maps to a documented number in inputs_config.py.",
+    "Ask what a farmer can answer. Satellites fill the rest. Categories map to numbers.",
 )
 st.markdown(
     """
-1. **Your field** — draw on the map or open a demo field.  
-2. **What you grow now** — one crop per satellite season slot; planting/harvest months
-   pre-filled from satellites (“Detected from satellite — change if wrong”).  
+1. **Your field** — confirm the map polygon satellites watch.  
+2. **What you grow now** — confirm the crop in each satellite season; planting/harvest
+   months stay tucked away unless satellites got them wrong.  
 3. **Where your water comes from** — """
     + f"*{WATER_HINT}*  \n"
+    + f"{WATER_WHY}  \n"
     + " · ".join(f"**{WATER_LABELS[k]}**" for k in WATER_LABELS)
     + """  
 4. **Your soil type** — """
     + f"*{SOIL_HINT}*  \n"
+    + f"{SOIL_WHY}  \n"
     + " · ".join(f"**{SOIL_LABELS[k]}**" for k in SOIL_LABELS)
     + """  
 5. **What matters to you** — each goal Not important / Important / Very important.  
@@ -82,7 +88,8 @@ section("The six goals")
 for key in GOAL_KEYS:
     st.markdown(
         f"**{GOAL_LABELS[key]}** — *{GOAL_HINTS[key]}*  \n"
-        f"{GOAL_MEASURED[key]}"
+        f"**In plain words:** {GOAL_PLAIN[key]}  \n"
+        f"**How we measure it:** {GOAL_MEASURED[key]}"
     )
 
 section("Category → number mappings")

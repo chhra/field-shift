@@ -12,9 +12,14 @@ from fieldshift.engine.features import compute_features
 from fieldshift.engine.generate import generate_strategies
 from fieldshift.engine.inputs_config import (
     EQUAL_WEIGHTS_NOTE,
+    GOAL_HINTS,
     GOAL_KEYS,
+    GOAL_LABELS,
+    GOAL_PLAIN,
     LIMITED_IRRIGATION_ALLOWANCE,
     SOIL_AWC_MM_PER_M,
+    SOIL_WHY,
+    WATER_WHY,
     normalize_goal_weights,
     resolve_soil_category,
     resolve_water_access,
@@ -50,6 +55,16 @@ def _iowa() -> tuple[pd.DataFrame, pd.DataFrame, dict]:
 def test_exactly_six_criteria_keys() -> None:
     assert SCORE_KEYS == CRITERION_KEYS == GOAL_KEYS
     assert len(SCORE_KEYS) == 6
+
+
+def test_farmer_plain_copy_covers_every_goal() -> None:
+    """Every goal has a hint question and a plain-language effect line."""
+    for key in GOAL_KEYS:
+        assert key in GOAL_LABELS and GOAL_LABELS[key]
+        assert key in GOAL_HINTS and "?" in GOAL_HINTS[key]
+        assert key in GOAL_PLAIN and len(GOAL_PLAIN[key]) > 20
+    assert "irrigation" in WATER_WHY.lower() or "rain" in WATER_WHY.lower()
+    assert "soil" in SOIL_WHY.lower() or "rain" in SOIL_WHY.lower()
 
 
 def test_weight_normalization_and_all_zero_note() -> None:

@@ -8,18 +8,29 @@ from pathlib import Path
 import streamlit as st
 from fieldshift.cache import read_json
 from fieldshift.engine.inputs_config import (
+    CROPS_CONFIRM_HINT,
+    CROPS_WHY,
     DEMO_FARM_ANSWERS,
+    FIELD_CONFIRM_HINT,
     GOAL_HINTS,
     GOAL_KEYS,
     GOAL_LABELS,
+    GOAL_PLAIN,
+    GOALS_HINT,
+    GOALS_WHY,
     IMPORTANCE_LABELS,
     MONTH_SHIFT_DATA_GAP_THRESHOLD,
+    MONTHS_EXPANDER_LABEL,
     SOIL_HELP,
     SOIL_HINT,
     SOIL_LABELS,
+    SOIL_WHY,
+    TWO_YEAR_HELP,
+    TWO_YEAR_LABEL,
     WATER_HELP,
     WATER_HINT,
     WATER_LABELS,
+    WATER_WHY,
     normalize_goal_weights,
     resolve_soil_category,
     resolve_water_access,
@@ -311,6 +322,7 @@ st.plotly_chart(
     _chart,
     use_container_width=True,
     config={"displayModeBar": False},
+    key=f"conditions-chart-{field_id}",
 )
 st.caption(
     "Plant greenness (line) · Rain mm (bars) · Water balance (dashed). "
@@ -342,7 +354,7 @@ with st.expander("Stress & anomalies (SI model)"):
 # --- 3. About your farm ---
 section(
     "About your farm",
-    "Five inputs only — satellites pre-fill seasons; you confirm water, soil, and goals.",
+    "Answer five short questions. Satellites already filled what they can — you confirm.",
     step=3,
 )
 
@@ -352,9 +364,21 @@ if st.session_state.get("_farm_inputs_field") != field_id:
     st.session_state["_farm_inputs_field"] = field_id
     st.session_state["water_category"] = demo_answers["water_category"]
     st.session_state["soil_category"] = demo_answers["soil_category"]
+    st.session_state["cycle_years"] = int(_DEFAULT_CYCLE.get(field_id, 1))
+    st.session_state[f"two-year-{field_id}"] = (
+        int(_DEFAULT_CYCLE.get(field_id, 1)) == 2
+    )
     for gk, gv in demo_answers["goals"].items():
-        st.session_state[f"goal-{gk}"] = int(gv)
-    st.caption(f"Pre-filled: {demo_answers['label']}")
+        st.session_state[f"goal-{field_id}-{gk}"] = int(gv)
+    st.session_state["_demo_banner"] = demo_answers["label"]
+
+if st.session_state.get("_demo_banner") and field_id in DEMO_FARM_ANSWERS:
+    st.markdown(
+        f'<p class="fs-farm-banner">Starting from <strong>'
+        f'{st.session_state["_demo_banner"]}</strong> — change anything that '
+        f"does not match your farm.</p>",
+        unsafe_allow_html=True,
+    )
 
 try:
     engine_feats = load_field_features(
@@ -363,22 +387,43 @@ try:
 except FileNotFoundError:
     engine_feats = {}
 
-st.markdown("**1 · Your field**")
-st.caption("Drawn on the map above, or opened from a demo field on Home.")
+st.markdown(
+    '<p class="fs-farm-step">1 · Your field</p>',
+    unsafe_allow_html=True,
+)
+st.markdown(
+    f'<p class="fs-farm-q">{FIELD_CONFIRM_HINT}</p>',
+    unsafe_allow_html=True,
+)
+st.markdown(
+    f'<p class="fs-farm-confirm">Watching: <strong>{conditions.name}</strong></p>',
+    unsafe_allow_html=True,
+)
 
-st.markdown("**2 · What you grow now**")
-st.caption(
-    "One crop per detected season slot. Planting and harvest months are "
-    "detected from satellite — change only if wrong."
+st.markdown(
+    '<p class="fs-farm-step">2 · What you grow now</p>',
+    unsafe_allow_html=True,
 )
-st.session_state["cycle_years"] = st.radio(
-    "Rotation cycle length (years)",
-    [1, 2],
-    index=[1, 2].index(int(st.session_state.get("cycle_years", 1))),
-    horizontal=True,
-    key=f"cycle-{field_id}",
-    help="Example: maize→soybean in one summer needs a 2-year cycle so both fit.",
+st.markdown(
+    f'<p class="fs-farm-q">{CROPS_CONFIRM_HINT}</p>',
+    unsafe_allow_html=True,
 )
+st.markdown(
+    f'<p class="fs-farm-why">{CROPS_WHY}</p>',
+    unsafe_allow_html=True,
+)
+
+if f"two-year-{field_id}" not in st.session_state:
+    st.session_state[f"two-year-{field_id}"] = (
+        int(_DEFAULT_CYCLE.get(field_id, 1)) == 2
+    )
+two_year = st.checkbox(
+    TWO_YEAR_LABEL,
+    key=f"two-year-{field_id}",
+    help=TWO_YEAR_HELP,
+)
+st.session_state["cycle_years"] = 2 if two_year else 1
+
 slots = rotation_slots_from_features(
     engine_feats,
     max_cash=4,
@@ -395,8 +440,17 @@ new_rot: list[str] = []
 plant_overrides: dict[str, int] = {}
 harvest_overrides: dict[str, int] = {}
 month_gaps: list[str] = []
-all_slots = cash_slots + cover_slots
-slot_cols = st.columns(max(1, min(4, len(all_slots) or 1)))
+# One cover picker is enough — the bare window repeats each year.
+cover_ui = cover_slots[:1]
+if cover_ui:
+    cover_ui[0] = {
+        **cover_ui[0],
+        "id": "cover_shared",
+        "label": "Cover in bare window",
+    }
+all_slots = cash_slots + cover_ui
+n_slot_cols = max(1, min(3, len(all_slots) or 1))
+slot_cols = st.columns(n_slot_cols)
 for i, slot in enumerate(all_slots):
     with slot_cols[i % len(slot_cols)]:
         options = crops_for_slot(slot, engine_feats, always_allow=preferred)
@@ -409,6 +463,21 @@ for i, slot in enumerate(all_slots):
         months = list(slot.get("months") or [])
         det_plant = int(months[0]) if months else 5
         det_harvest = int(months[-1]) if months else 10
+        span = (
+            f"{_MONTHS[det_plant - 1]}–{_MONTHS[det_harvest - 1]}"
+            if months
+            else "season from satellites"
+        )
+        kind_note = (
+            "Bare window — optional cover crop"
+            if slot.get("kind") == "cover"
+            else f"Growing season · usually {span}"
+        )
+        st.markdown(
+            f'<p class="fs-farm-slot-label"><strong>{slot["label"]}</strong>'
+            f'<span class="fs-farm-slot-meta">{kind_note}</span></p>',
+            unsafe_allow_html=True,
+        )
         if slot.get("kind") == "cover":
             choices = ["(none)"] + [o["id"] for o in options]
             default_cover = next(
@@ -416,14 +485,18 @@ for i, slot in enumerate(all_slots):
                 "(none)",
             )
             pick = st.selectbox(
-                f"{slot['label']}",
+                f"Crop for {slot['label']}",
                 choices,
                 index=choices.index(default_cover) if default_cover in choices else 0,
                 format_func=lambda x, _l=labels: (
                     "No cover crop" if x == "(none)" else _l.get(x, x)
                 ),
                 key=f"slot-{field_id}-{slot['id']}",
-                help="Optional cover in the bare window.",
+                help=(
+                    "Leave as “No cover crop” if the ground stays bare. "
+                    "Pick a cover if you plant something in this empty window."
+                ),
+                label_visibility="collapsed",
             )
             if pick != "(none)" and pick not in disabled_ids:
                 new_rot.append(pick)
@@ -440,36 +513,47 @@ for i, slot in enumerate(all_slots):
             if pref not in enabled_ids:
                 pref = enabled_ids[0]
             pick = st.selectbox(
-                f"{slot['label']}",
+                f"Is this the right crop for {slot['label']}?",
                 enabled_ids + sorted(disabled_ids),
                 index=enabled_ids.index(pref),
                 format_func=lambda x, _l=labels: _l.get(x, x),
                 key=f"slot-{field_id}-{slot['id']}",
+                help=(
+                    f"Satellites see green cover around {span}. "
+                    "Change the crop only if that is not what you grow."
+                ),
+                label_visibility="collapsed",
             )
             if pick in disabled_ids:
                 pick = pref
             new_rot.append(pick)
 
-        st.caption("Detected from satellite — change if wrong")
-        m1, m2 = st.columns(2)
-        with m1:
-            plant = st.selectbox(
-                "Planting month",
-                list(range(1, 13)),
-                index=det_plant - 1,
-                format_func=lambda m: _MONTHS[m - 1],
-                key=f"plant-{field_id}-{slot['id']}",
-                help="Example: if satellites show May but you plant in April, change it.",
+        plant = det_plant
+        harvest = det_harvest
+        with st.expander(MONTHS_EXPANDER_LABEL, expanded=False):
+            st.caption(
+                f"Satellites suggest plant {_MONTHS[det_plant - 1]}, "
+                f"harvest {_MONTHS[det_harvest - 1]}. Change only if wrong."
             )
-        with m2:
-            harvest = st.selectbox(
-                "Harvest month",
-                list(range(1, 13)),
-                index=det_harvest - 1,
-                format_func=lambda m: _MONTHS[m - 1],
-                key=f"harvest-{field_id}-{slot['id']}",
-                help="Example: if you harvest in September instead of October, change it.",
-            )
+            m1, m2 = st.columns(2)
+            with m1:
+                plant = st.selectbox(
+                    "When do you plant?",
+                    list(range(1, 13)),
+                    index=det_plant - 1,
+                    format_func=lambda m: _MONTHS[m - 1],
+                    key=f"plant-{field_id}-{slot['id']}",
+                    help="Example: satellites show May but you plant in April.",
+                )
+            with m2:
+                harvest = st.selectbox(
+                    "When do you harvest?",
+                    list(range(1, 13)),
+                    index=det_harvest - 1,
+                    format_func=lambda m: _MONTHS[m - 1],
+                    key=f"harvest-{field_id}-{slot['id']}",
+                    help="Example: you harvest in September instead of October.",
+                )
         if abs(int(plant) - det_plant) > MONTH_SHIFT_DATA_GAP_THRESHOLD:
             month_gaps.append(
                 f"Planting month for {slot['label']} moved >"
@@ -489,8 +573,18 @@ if not new_rot:
     new_rot = list(default_cash)
 st.session_state["current_rotation"] = new_rot
 
-st.markdown("**3 · Where your water comes from**")
-st.caption(WATER_HINT)
+st.markdown(
+    '<p class="fs-farm-step">3 · Where your water comes from</p>',
+    unsafe_allow_html=True,
+)
+st.markdown(
+    f'<p class="fs-farm-q">{WATER_HINT}</p>',
+    unsafe_allow_html=True,
+)
+st.markdown(
+    f'<p class="fs-farm-why">{WATER_WHY}</p>',
+    unsafe_allow_html=True,
+)
 water_keys = list(WATER_LABELS.keys())
 st.session_state["water_category"] = st.radio(
     "Water source",
@@ -503,8 +597,18 @@ st.session_state["water_category"] = st.radio(
     label_visibility="collapsed",
 )
 
-st.markdown("**4 · Your soil type**")
-st.caption(SOIL_HINT)
+st.markdown(
+    '<p class="fs-farm-step">4 · Your soil type</p>',
+    unsafe_allow_html=True,
+)
+st.markdown(
+    f'<p class="fs-farm-q">{SOIL_HINT}</p>',
+    unsafe_allow_html=True,
+)
+st.markdown(
+    f'<p class="fs-farm-why">{SOIL_WHY}</p>',
+    unsafe_allow_html=True,
+)
 soil_keys = list(SOIL_LABELS.keys())
 st.session_state["soil_category"] = st.radio(
     "Soil type",
@@ -517,25 +621,47 @@ st.session_state["soil_category"] = st.radio(
     label_visibility="collapsed",
 )
 
-st.markdown("**5 · What matters to you**")
-st.caption(
-    "Each goal: Not important / Important / Very important. "
-    "Weights are share of the total — changes apply immediately."
+st.markdown(
+    '<p class="fs-farm-step">5 · What matters to you</p>',
+    unsafe_allow_html=True,
+)
+st.markdown(
+    f'<p class="fs-farm-q">{GOALS_HINT}</p>',
+    unsafe_allow_html=True,
+)
+st.markdown(
+    f'<p class="fs-farm-why">{GOALS_WHY}</p>',
+    unsafe_allow_html=True,
 )
 goal_importance: dict[str, int] = {}
 gcols = st.columns(2)
 for i, gk in enumerate(GOAL_KEYS):
     with gcols[i % 2]:
+        st.markdown(
+            f'<p class="fs-farm-goal-name">{GOAL_LABELS[gk]}</p>',
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            f'<p class="fs-farm-q">{GOAL_HINTS[gk]}</p>',
+            unsafe_allow_html=True,
+        )
+        if f"goal-{field_id}-{gk}" not in st.session_state:
+            st.session_state[f"goal-{field_id}-{gk}"] = int(
+                demo_answers["goals"].get(gk, 1)
+            )
         goal_importance[gk] = st.radio(
             GOAL_LABELS[gk],
             [0, 1, 2],
-            index=[0, 1, 2].index(int(st.session_state.get(f"goal-{gk}", 1))),
             format_func=lambda v: IMPORTANCE_LABELS[int(v)],
             horizontal=True,
             key=f"goal-{field_id}-{gk}",
-            help=GOAL_HINTS[gk],
+            help=f"{GOAL_HINTS[gk]} {GOAL_PLAIN[gk]}",
+            label_visibility="collapsed",
         )
-        st.caption(GOAL_HINTS[gk])
+        st.markdown(
+            f'<p class="fs-farm-why">{GOAL_PLAIN[gk]}</p>',
+            unsafe_allow_html=True,
+        )
 
 weights_map, equal_note = normalize_goal_weights(goal_importance)
 if equal_note:
@@ -554,9 +680,15 @@ input_penalty = bool(water_gaps or soil_gaps)
 # --- 4 climate + 5 options ---
 def _options_block() -> None:
     section(
-        "What if the climate shifts?",
-        "Optional scenario — options below re-score from cached features only.",
+        "What if the weather changes?",
+        "Optional check — not a forecast. We reuse today’s satellite record and "
+        "ask: if rain or heat shifted, which rotations still look good for you?",
         step=4,
+    )
+    st.markdown(
+        '<p class="fs-farm-why">Scores update right away. The map and timelapse '
+        "stay the same.</p>",
+        unsafe_allow_html=True,
     )
     rain_opts = [("Drier (−20%)", 0.8), ("Today", 1.0), ("Wetter (+20%)", 1.2)]
     temp_opts = [("Today", 0.0), ("+1 °C", 1.0), ("+2 °C", 2.0)]
@@ -564,16 +696,25 @@ def _options_block() -> None:
     temp_labels = [t[0] for t in temp_opts]
     c_rain, c_temp = st.columns(2)
     with c_rain:
+        st.markdown(
+            '<p class="fs-farm-q">What if yearly rain changed?</p>',
+            unsafe_allow_html=True,
+        )
         rain_pick = st.radio(
             "Rainfall",
             rain_labels,
             index=1,
             horizontal=True,
             key=f"rain-cat-{field_id}",
-            help="Example: Drier means about 20% less rain than today.",
+            help="Example: Drier means about one-fifth less rain than a typical year here.",
+            label_visibility="collapsed",
         )
         st.session_state["rain_mult"] = dict(rain_opts)[rain_pick]
     with c_temp:
+        st.markdown(
+            '<p class="fs-farm-q">What if seasons ran warmer?</p>',
+            unsafe_allow_html=True,
+        )
         temp_pick = st.radio(
             "Temperature",
             temp_labels,
@@ -581,6 +722,7 @@ def _options_block() -> None:
             horizontal=True,
             key=f"temp-cat-{field_id}",
             help="Example: +2 °C means warmer seasons on top of today’s climate.",
+            label_visibility="collapsed",
         )
         st.session_state["temp_offset"] = dict(temp_opts)[temp_pick]
 

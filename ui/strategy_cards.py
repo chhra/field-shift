@@ -319,6 +319,7 @@ def _render_one_card(
             scores_bar(card.scores, height=180),
             use_container_width=True,
             config={"displayModeBar": False},
+            key=f"strat-scores-{card.id}",
         )
         st.markdown("**Why this option**")
         st.write(card.why)
