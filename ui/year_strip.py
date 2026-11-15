@@ -54,9 +54,10 @@ def register_crop_meta(
 
 def short_name(crop_id: str) -> str:
     meta = _META.get(crop_id) or {}
+    # Prefer an explicit register_crop_meta name (e.g. UK "Winter barley").
     name = str(
-        _crops().get(crop_id, {}).get("name")
-        or meta.get("name")
+        meta.get("name")
+        or _crops().get(crop_id, {}).get("name")
         or crop_id.replace("_", " ")
     )
     return name.split(" / ")[0].split(" (")[0]
