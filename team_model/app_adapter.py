@@ -94,6 +94,31 @@ def priorities_from_goals(goals):
     return out
 
 
+def priorities_from_order(order):
+    """Turn the farmer's goal ORDER (most important first) into the model's priorities.
+
+    Same rank-sum shares as the Field page (with n goals listed, 1st counts n, 2nd n-1,
+    ... last 1), scaled so 1st place gets 3, the model's "high", keeping every priority
+    in the model's tuned 0-3 range. Goals left out get 0. An empty list uses the defaults.
+
+        priorities_from_order(["erosion", "water"])
+        -> {"water": 1.5, "forage": 0, "fertility": 0, "soil": 3.0,
+            "organic_matter": 0, "income": 0}
+    """
+    order = list(dict.fromkeys(order))
+    unknown = set(order) - set(GOAL_TO_PRIORITY)
+    if unknown:
+        valid = ", ".join(GOAL_TO_PRIORITY)
+        raise ValueError(f"Unknown goal(s): {sorted(unknown)}. Valid: {valid}")
+    if not order:
+        return priorities_from_goals(DEFAULT_GOALS)
+    n = len(order)
+    out = {priority: 0 for priority in GOAL_TO_PRIORITY.values()}
+    for i, goal in enumerate(order):
+        out[GOAL_TO_PRIORITY[goal]] = round(3 * (n - i) / n, 2)
+    return out
+
+
 def crops_from_app_ids(crop_ids):
     """Turn the app's crop ids into the model's crop names.
     Raises ValueError listing any crop the model doesn't have."""
@@ -146,7 +171,7 @@ def crop_choices(crops=None):
 
 
 def recommend_for_app(current, goals=None, water="rain_only", soil="not_sure", warming_c=0.0,
-                      lat=None, lon=None):
+                      lat=None, lon=None, goal_order=None):
     """Run the model from the app's inputs.
 
     Arguments
@@ -158,6 +183,8 @@ def recommend_for_app(current, goals=None, water="rain_only", soil="not_sure", w
         warming_c  what-if warming in °C (0, 1, 2...)
         lat, lon   optional UK coordinates. When given, the farm climate is built
                    live from NASA POWER at that point; otherwise Rothamsted Broadbalk.
+        goal_order optional goal keys, most important first. When given, it sets the
+                   priorities (see priorities_from_order) and `goals` is ignored.
 
     Returns a dictionary:
         results     the model's rotations: current, Option A, Option B (may be fewer)
@@ -169,7 +196,10 @@ def recommend_for_app(current, goals=None, water="rain_only", soil="not_sure", w
         crops, successors, farm, weather = load_location_data(float(lat), float(lon))
     else:
         crops, successors, farm, weather = load_data()
-    priorities = priorities_from_goals(goals or DEFAULT_GOALS)
+    if goal_order is not None:
+        priorities = priorities_from_order(goal_order)
+    else:
+        priorities = priorities_from_goals(goals or DEFAULT_GOALS)
     results = model.recommend(list(current), farm, priorities, crops, successors,
                               weather, float(warming_c), water, soil)
     return {"results": results, "priorities": priorities, "farm": farm,

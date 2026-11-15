@@ -11,9 +11,6 @@ from fieldshift.cache import read_json
 from fieldshift.engine.candidates import season_label
 from fieldshift.engine.inputs_config import (
     DEMO_FARM_ANSWERS,
-    GOAL_HINTS,
-    GOAL_KEYS,
-    GOAL_LABELS,
     MONTH_SHIFT_DATA_GAP_THRESHOLD,
     QUESTIONS,
     SOIL_HELP,
@@ -49,17 +46,16 @@ from streamlit_folium import st_folium
 from ui.charts import conditions_figure, conditions_takeaway
 from ui.components import (
     fact_chips,
-    goal_mix_bar,
     question,
     recommendation_banner,
     section,
 )
 from ui.explainers import FACT_HELP, chart_how_to_read
+from ui.goal_rank import goal_ranking
 from ui.map import field_map
 from ui.mock_banner import show_mock_banner
 from ui.source_caption import source_caption
 from ui.strategy_cards import render_strategy_cards
-from ui.theme import SCORE_COLORS
 from ui.year_strip import (
     is_cover_crop,
     month_range,
@@ -345,23 +341,6 @@ with st.expander("Stress & anomalies (SI model)"):
         st.info(anoms["uncertainty"])
     source_caption("IsolationForest SI model", ndvi_through)
 
-def _move_goal(key: str, goal: str, step: int) -> None:
-    order = list(st.session_state[key])
-    i = order.index(goal)
-    j = i + step
-    if 0 <= j < len(order):
-        order[i], order[j] = order[j], order[i]
-    st.session_state[key] = order
-
-
-def _drop_goal(key: str, goal: str) -> None:
-    st.session_state[key] = [g for g in st.session_state[key] if g != goal]
-
-
-def _add_goal(key: str, goal: str) -> None:
-    st.session_state[key] = [*st.session_state[key], goal]
-
-
 # --- 3–5. Farm inputs + options (one fragment: a click re-scores cards,
 # it does not rebuild the map, timelapse or seasonal chart above) ---
 def _farm_block() -> None:
@@ -572,70 +551,8 @@ def _farm_block() -> None:
     )
 
     question(5, *QUESTIONS["goals"])
-    order_key = f"goal-order-{field_id}"
-    if order_key not in st.session_state:
-        st.session_state[order_key] = default_goal_order(demo_answers["goals"])
-    order = [g for g in st.session_state[order_key] if g in GOAL_KEYS]
+    order = goal_ranking(field_id, default_goal_order(demo_answers["goals"]))
     weights_map, goal_importance, equal_note = rank_goal_weights(order)
-
-    for i, gk in enumerate(order):
-        name = GOAL_LABELS[gk]
-        with st.container(key=f"rank-row-{field_id}-{gk}"):
-            c_txt, c_up, c_down, c_drop = st.columns(
-                [10, 1, 1, 1], gap="small", vertical_alignment="center"
-            )
-            c_txt.markdown(
-                f'<div class="fs-rank"><span class="fs-rank-num">{i + 1}</span>'
-                f'<i style="background:{SCORE_COLORS[gk]}"></i>'
-                f'<span class="fs-rank-text"><span class="fs-rank-name">{name}</span>'
-                f'<span class="fs-rank-q">{GOAL_HINTS[gk]}</span></span>'
-                f'<span class="fs-rank-share">{weights_map[gk]:.0%}</span></div>',
-                unsafe_allow_html=True,
-            )
-            c_up.button(
-                ":material/arrow_upward:",
-                key=f"goal-up-{field_id}-{gk}",
-                help=f"Move “{name}” up",
-                disabled=i == 0,
-                on_click=_move_goal,
-                args=(order_key, gk, -1),
-            )
-            c_down.button(
-                ":material/arrow_downward:",
-                key=f"goal-down-{field_id}-{gk}",
-                help=f"Move “{name}” down",
-                disabled=i == len(order) - 1,
-                on_click=_move_goal,
-                args=(order_key, gk, 1),
-            )
-            c_drop.button(
-                ":material/close:",
-                key=f"goal-drop-{field_id}-{gk}",
-                help=f"Remove “{name}”: it doesn't matter to me",
-                on_click=_drop_goal,
-                args=(order_key, gk),
-            )
-
-    left_out = [g for g in GOAL_KEYS if g not in order]
-    if left_out:
-        st.markdown(
-            '<p class="fs-rank-out">Doesn’t matter to me · tap to add back</p>',
-            unsafe_allow_html=True,
-        )
-        out_cols = st.columns(3, gap="small")
-        for j, gk in enumerate(left_out):
-            out_cols[j % 3].button(
-                GOAL_LABELS[gk],
-                icon=":material/add:",
-                key=f"goal-add-{field_id}-{gk}",
-                on_click=_add_goal,
-                args=(order_key, gk),
-                use_container_width=True,
-            )
-
-    if equal_note:
-        st.info(equal_note)
-    goal_mix_bar(weights_map)
 
     water_access, water_gaps = resolve_water_access(st.session_state["water_category"])
     soil_type, _awc, _inf, soil_gaps = resolve_soil_category(

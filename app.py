@@ -24,6 +24,7 @@ how = st.Page(
     url_path="how-it-works",
 )
 
+# No tab for the UK model: the Home demo and UK coordinates open it.
 uk_model = st.Page(
     "views/uk_model.py",
     title="UK model",
@@ -38,14 +39,14 @@ active_path = (getattr(pg, "url_path", None) or "") or ""
 inject_nav_active(active_path)
 
 # Single row: brand + tabs share one baseline
-b, n1, n3, n4, _pad = st.columns([1.35, 0.7, 1.0, 1.2, 1.0], gap="small")
+b, n1, n2, n3, _pad = st.columns([1.35, 0.7, 0.7, 1.2, 2.0], gap="small")
 with b:
     st.markdown('<p class="fs-brand">Field Shift</p>', unsafe_allow_html=True)
 with n1:
     st.page_link(home, label="Home", use_container_width=False)
+with n2:
+    st.page_link(field, label="Field", use_container_width=False)
 with n3:
-    st.page_link(uk_model, label="UK model", use_container_width=False)
-with n4:
     st.page_link(how, label="How it works", use_container_width=False)
 
 st.markdown('<div class="fs-topnav-rule" aria-hidden="true"></div>', unsafe_allow_html=True)

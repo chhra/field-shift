@@ -168,7 +168,7 @@ def goal_mix_bar(weights: dict[str, float]) -> None:
     )
     summary = ", ".join(f"{_MIX_LABELS.get(k, k)} {weights[k]:.0%}" for k in keys)
     st.markdown(
-        f'<div class="fs-mix"><p class="fs-mix-title">Your answers shape the ranking like this</p>'
+        f'<div class="fs-mix"><p class="fs-mix-title">Your order shapes the ranking like this</p>'
         f'<div class="fs-mix-bar" role="img" aria-label="{html.escape(summary)}">{segs}</div>'
         f'<div class="fs-mix-legend">{legend}</div></div>',
         unsafe_allow_html=True,

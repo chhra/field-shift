@@ -12,13 +12,14 @@ import json
 import pandas as pd
 import streamlit as st
 from fieldshift.engine.inputs_config import (
-    GOAL_HINTS,
     GOAL_KEYS,
     GOAL_LABELS,
-    IMPORTANCE_LABELS,
+    QUESTIONS,
+    default_goal_order,
 )
 from team_model import app_adapter, model
-from ui.components import fact_chips, hero, recommendation_banner, section
+from ui.components import fact_chips, hero, question, recommendation_banner, section
+from ui.goal_rank import goal_ranking
 
 _MONTHS = model.MONTHS
 _DEFAULT_ROTATION = [
@@ -41,7 +42,7 @@ _STATION_SUMMARY = model.DATA_DIR / "processed" / "climate" / "station_vs_nasa_r
 @st.cache_data(show_spinner="Scoring rotations…")
 def _run(
     current: tuple[str, ...],
-    goals: tuple[tuple[str, int], ...],
+    goal_order: tuple[str, ...],
     water: str,
     soil: str,
     warming_c: float,
@@ -50,7 +51,13 @@ def _run(
 ) -> dict:
     """Run the model (cached: the same answers give the same result instantly)."""
     return app_adapter.recommend_for_app(
-        list(current), dict(goals), water, soil, warming_c, lat, lon
+        list(current),
+        water=water,
+        soil=soil,
+        warming_c=warming_c,
+        lat=lat,
+        lon=lon,
+        goal_order=list(goal_order),
     )
 
 
@@ -211,12 +218,11 @@ section(
     step=2,
 )
 
-st.markdown('<p class="fs-farm-step">1 · What you grow now</p>', unsafe_allow_html=True)
-st.markdown(
-    '<p class="fs-farm-why">One main crop per harvest year, in order. A ley counts once and '
-    "stays 3 years. Leave cover crops out: the tool adds them where the soil would be bare."
-    "</p>",
-    unsafe_allow_html=True,
+question(
+    1,
+    QUESTIONS["crops"][0],
+    "One main crop per harvest year, in order. A ley counts once and stays 3 years. "
+    "Leave cover crops out: the tool adds them where the soil would be bare.",
 )
 n_crops = st.radio(
     "How many crops are in your rotation?",
@@ -239,7 +245,7 @@ for i in range(n_crops):
             )
         )
 
-st.markdown('<p class="fs-farm-step">2 · Where your water comes from</p>', unsafe_allow_html=True)
+question(2, *QUESTIONS["water"])
 water = st.radio(
     "Water source",
     list(model.WATER_SOURCES),
@@ -249,7 +255,7 @@ water = st.radio(
     label_visibility="collapsed",
 )
 
-st.markdown('<p class="fs-farm-step">3 · Your soil type</p>', unsafe_allow_html=True)
+question(3, *QUESTIONS["soil"])
 soil_keys = list(model.SOIL_TYPES)
 soil = st.radio(
     "Soil type",
@@ -261,31 +267,13 @@ soil = st.radio(
     label_visibility="collapsed",
 )
 
-st.markdown('<p class="fs-farm-step">4 · What matters to you</p>', unsafe_allow_html=True)
-goals: dict[str, int] = {}
-gcols = st.columns(2)
-for i, gk in enumerate(GOAL_KEYS):
-    with gcols[i % 2]:
-        st.markdown(
-            f'<p class="fs-farm-goal-name">{GOAL_LABELS[gk]}</p>'
-            f'<p class="fs-farm-q">{GOAL_HINTS[gk]}</p>',
-            unsafe_allow_html=True,
-        )
-        goals[gk] = st.radio(
-            GOAL_LABELS[gk],
-            [0, 1, 2],
-            index=app_adapter.DEFAULT_GOALS[gk],
-            format_func=lambda v: IMPORTANCE_LABELS[int(v)],
-            horizontal=True,
-            key=f"ukm-goal-{gk}",
-            label_visibility="collapsed",
-        )
+question(4, *QUESTIONS["goals"])
+goal_order = goal_ranking("ukm", default_goal_order(app_adapter.DEFAULT_GOALS))
 
-st.markdown('<p class="fs-farm-step">5 · What if seasons ran warmer?</p>', unsafe_allow_html=True)
-st.markdown(
-    '<p class="fs-farm-why">Not a forecast. Every day in the NASA record is made this much '
-    "warmer, then heat stress and frost are worked out again for each crop.</p>",
-    unsafe_allow_html=True,
+question(None, "What if seasons ran warmer?")
+st.caption(
+    "Not a forecast. Every day in the NASA record is made this much warmer, "
+    "then heat stress and frost are worked out again for each crop."
 )
 warming = st.radio(
     "Warming",
@@ -308,8 +296,13 @@ section(
 
 try:
     out = _run(
-        tuple(current), tuple(sorted(goals.items())), water, soil, float(warming),
-        eff_lat, eff_lon,
+        tuple(current),
+        tuple(goal_order),
+        water,
+        soil,
+        float(warming),
+        eff_lat,
+        eff_lon,
     )
 except ValueError as err:
     st.error(str(err))
@@ -318,6 +311,7 @@ except ValueError as err:
 results = out["results"]
 priorities = out["priorities"]
 base = results[0]
+place = {g: i + 1 for i, g in enumerate(goal_order)}
 
 if len(results) > 1:
     best = results[1]
@@ -330,7 +324,7 @@ else:
     st.info(base["reasons"][-1] if base["reasons"] else "No alternative rotation was found.")
 
 card_cols = st.columns(len(results))
-for col, r in zip(card_cols, results):
+for col, r in zip(card_cols, results, strict=True):
     with col, st.container(border=True):
         st.caption(f"{r['name']} · {r['years']} year{'' if r['years'] == 1 else 's'}")
         st.markdown(f"**{r['rotation']}**")
@@ -351,13 +345,16 @@ for col, r in zip(card_cols, results):
 
 st.markdown("**Where each score comes from**")
 st.caption(
-    "Points per rule group, already multiplied by how much you said each goal matters. "
+    "Points per rule group, already multiplied by your goal order. "
     "Each column adds up to that rotation's score."
 )
 rows: dict[str, list[float]] = {}
 for gk in GOAL_KEYS:
     bucket = app_adapter.GOAL_TO_PRIORITY[gk]
-    label = f"{GOAL_LABELS[gk]} ({IMPORTANCE_LABELS[goals[gk]].lower()})"
+    if gk in place:
+        label = f"{GOAL_LABELS[gk]} (#{place[gk]})"
+    else:
+        label = f"{GOAL_LABELS[gk]} (off)"
     rows[label] = [round(r["points"][bucket] * priorities[bucket], 1) for r in results]
 for bucket, (label, weight) in _FIXED_BUCKETS.items():
     rows[label] = [round(r["points"][bucket] * weight, 1) for r in results]

@@ -121,6 +121,33 @@ def test_bad_goals_are_rejected():
         app_adapter.priorities_from_goals({"water": 3})
 
 
+def test_priorities_from_order_scales_first_to_three():
+    p = app_adapter.priorities_from_order(["erosion", "water", "market"])
+    assert p["soil"] == 3.0
+    assert p["water"] == 2.0
+    assert p["income"] == 1.0
+    assert p["forage"] == p["fertility"] == p["organic_matter"] == 0
+    assert app_adapter.priorities_from_order([]) == app_adapter.priorities_from_goals(
+        app_adapter.DEFAULT_GOALS
+    )
+    with pytest.raises(ValueError, match="Unknown goal"):
+        app_adapter.priorities_from_order(["profit"])
+
+
+def test_recommend_for_app_honours_goal_order():
+    out = app_adapter.recommend_for_app(
+        ARABLE,
+        water="rain_only",
+        soil="loamy",
+        goal_order=["erosion", "organic_matter", "water"],
+    )
+    assert out["priorities"]["soil"] == 3.0
+    assert out["priorities"]["organic_matter"] == 2.0
+    assert out["priorities"]["water"] == 1.0
+    assert out["priorities"]["income"] == 0
+    assert out["results"]
+
+
 def test_app_crop_ids_translate():
     assert app_adapter.crops_from_app_ids(["winter_wheat", "canola"]) == [
         "Winter wheat", "Winter oilseed rape",
