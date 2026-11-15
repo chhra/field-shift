@@ -25,6 +25,9 @@ htmlcov/
 
 *.log
 npm-debug.log*
+node_modules/
+# stray root lockfile (the real one is web/package-lock.json)
+/package-lock.json
 
 # OS / IDE
 .DS_Store
