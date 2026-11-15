@@ -1,0 +1,42 @@
+.frame {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-l);
+  background: #d9ddd3;
+  isolation: isolate;
+}
+
+.placeholder {
+  height: 100%;
+  background:
+    radial-gradient(circle at 30% 40%, rgba(255, 255, 255, 0.35), transparent 60%),
+    linear-gradient(135deg, #cfd6c6, #b9c3ae);
+}
+
+.frame :global(.leaflet-container) {
+  font-family: var(--font);
+  background: #d9ddd3;
+}
+
+.frame :global(.leaflet-tooltip) {
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 550;
+  box-shadow: none;
+}
+
+.frame :global(.leaflet-tooltip-top::before) {
+  border-top-color: var(--ink);
+}
+
+.frame :global(.leaflet-control-zoom a) {
+  color: var(--ink);
+}
+
+.frame :global(.leaflet-control-attribution) {
+  font-size: 10px;
+}

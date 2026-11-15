@@ -55,7 +55,8 @@ class Plan(BaseModel):
     key: str
     role: PlanRole
     eyebrow: str
-    title: str
+    title: str = Field(description="One line with months, e.g. 'Maize (May–Oct) → …'")
+    steps: list[str] = Field(default=[], description="Crop names in rotation order")
     meta: str = ""
     blurb: str = ""
     features: list[str] = []
@@ -140,17 +141,19 @@ class Timelapse(BaseModel):
     label: str
     available: bool
     frames: int
+    size: tuple[int, int] | None = Field(description="Frame width, height in pixels")
     message: str | None
     data_through: str | None
 
 
 class Reliability(BaseModel):
-    coverage: list[tuple[str, str]]
+    coverage: list[tuple[str, str]] = Field(description="(dataset, data through) pairs")
     cross_check: str | None
 
 
 class FieldSetup(BaseModel):
     crops: list[str]
+    typical_crops: list[str] = Field(description="Fills new crop slots when the count rises")
     cover: str | None
     water: WaterKey
     soil: SoilKey

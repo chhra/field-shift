@@ -58,9 +58,13 @@ def field_plan(
     *,
     baseline_scores: Any,
     show_climate_delta: bool,
-    alt_index: int,
+    in_compare: bool,
 ) -> dict[str, Any]:
-    """One Field-engine card as plan content (no calendar markup)."""
+    """One Field-engine card as plan content (no calendar markup).
+
+    ``in_compare``: the card sits in the compare row, where a near-best option
+    is the Alternative; below the row it is "Also worth considering".
+    """
     tier = card.tier or "worth_considering"
     if tier == "baseline":
         role = "current"
@@ -70,7 +74,7 @@ def field_plan(
         blurb = card.tier_reason or "Not a fit for this field under your priorities."
     else:
         role = "recommended" if tier == "best_fit" else (
-            "alternative" if alt_index <= 1 else "other"
+            "alternative" if in_compare else "other"
         )
         diffs = top_criterion_diffs(card.scores, baseline_scores, n=3)
         blurb = farmer_comparison_sentence(

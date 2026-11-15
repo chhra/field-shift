@@ -62,6 +62,13 @@ def test_goal_order_changes_the_recommendation() -> None:
     assert any(p["role"] == "recommended" for p in soil_first["compare"])
 
 
+def test_roles_follow_the_compare_row() -> None:
+    body = _iowa_body(goal_order=["erosion", "organic_matter", "nitrogen"])
+    data = client.post("/api/fields/iowa/options", json=body).json()
+    assert {p["role"] for p in data["compare"]} <= {"current", "recommended", "alternative"}
+    assert all(p["role"] == "other" for p in data["others"])
+
+
 def test_month_override_shifts_the_farm_year() -> None:
     body = _iowa_body(months=[{"plant": 4, "harvest": 9}, None])
     data = client.post("/api/fields/iowa/options", json=body).json()

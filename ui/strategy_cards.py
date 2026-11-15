@@ -43,9 +43,9 @@ def render_strategy_cards(
                     c,
                     baseline_scores=baseline_scores,
                     show_climate_delta=show_climate_delta,
-                    alt_index=i,
+                    in_compare=True,
                 )
-                for i, c in enumerate(compare)
+                for c in compare
             ],
             details_fn=_field_details,
             allow_expanders=True,
@@ -62,9 +62,9 @@ def render_strategy_cards(
                     c,
                     baseline_scores=baseline_scores,
                     show_climate_delta=show_climate_delta,
-                    alt_index=i + 1,
+                    in_compare=False,
                 )
-                for i, c in enumerate(others)
+                for c in others
             ],
             details_fn=_field_details,
             allow_expanders=True,
@@ -85,7 +85,7 @@ def render_strategy_cards(
                         c,
                         baseline_scores=baseline_scores,
                         show_climate_delta=show_climate_delta,
-                        alt_index=0,
+                        in_compare=False,
                     )
                     for c in bad
                 ],
@@ -99,13 +99,13 @@ def _card_to_plan(
     *,
     baseline_scores: Any,
     show_climate_delta: bool,
-    alt_index: int,
+    in_compare: bool,
 ) -> dict[str, Any]:
     plan = field_plan(
         card,
         baseline_scores=baseline_scores,
         show_climate_delta=show_climate_delta,
-        alt_index=alt_index,
+        in_compare=in_compare,
     )
     plan["calendar_html"] = year_strip_html(rows_from_sequence(card.sequence), compact=True)
     plan["_card"] = card

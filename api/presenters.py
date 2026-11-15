@@ -9,7 +9,13 @@ from typing import Any
 from fieldshift.models import StrategyCard
 from ui.glossary import friendly_source
 from ui.plans import ROLE_EYEBROW, field_plan, group_field_cards, uk_plans
-from ui.year_strip import calendar_model, rows_from_crops, rows_from_sequence
+from ui.year_strip import (
+    calendar_model,
+    is_cover_crop,
+    rows_from_crops,
+    rows_from_sequence,
+    short_name,
+)
 
 from api.schemas import CalendarRow, Evidence, Plan, PlanDetails
 
@@ -25,13 +31,36 @@ def calendar_rows(items: list[tuple[str, list[int]]]) -> list[CalendarRow]:
     return [CalendarRow.model_validate(r) for r in calendar_model(rows_from_crops(items))]
 
 
-def _plan(content: dict[str, Any], calendar: list[CalendarRow], details: PlanDetails) -> Plan:
+def _steps(crop_ids: list[str]) -> list[str]:
+    """Crop names in rotation order; months live in the calendar, not the title."""
+    out: list[str] = []
+    for cid in crop_ids:
+        label = short_name(cid)
+        if is_cover_crop(cid) and "cover" not in label.lower():
+            label = f"{label} cover"
+        out.append(label)
+    return out
+
+
+def _years(n: int) -> str:
+    return f"{n} {'year' if n == 1 else 'years'}" if n else ""
+
+
+def _plan(
+    content: dict[str, Any],
+    calendar: list[CalendarRow],
+    details: PlanDetails,
+    *,
+    steps: list[str],
+    meta: str,
+) -> Plan:
     return Plan(
         key=content["key"],
         role=content["role"],
         eyebrow=ROLE_EYEBROW.get(content["role"], "Option"),
         title=content["title"] or "—",
-        meta=content.get("meta") or "",
+        steps=steps,
+        meta=meta,
         blurb=content.get("blurb") or "",
         features=content.get("features") or [],
         featured=bool(content.get("featured")),
@@ -68,24 +97,26 @@ def field_plan_groups(
     baseline_scores = baseline.scores if baseline else None
     compare, others, bad = group_field_cards(cards)
 
-    def build(card: StrategyCard, alt_index: int) -> Plan:
+    def build(card: StrategyCard, in_compare: bool) -> Plan:
         content = field_plan(
             card,
             baseline_scores=baseline_scores,
             show_climate_delta=climate_shifted,
-            alt_index=alt_index,
+            in_compare=in_compare,
         )
         rows = calendar_model(rows_from_sequence(card.sequence))
         return _plan(
             content,
             [CalendarRow.model_validate(r) for r in rows],
             _field_details(card),
+            steps=_steps([s.crop_id for s in card.sequence]),
+            meta=_years(len(rows)),
         )
 
     return (
-        [build(c, i) for i, c in enumerate(compare)],
-        [build(c, i + 1) for i, c in enumerate(others)],
-        [build(c, 0) for c in bad],
+        [build(c, True) for c in compare],
+        [build(c, False) for c in others],
+        [build(c, False) for c in bad],
     )
 
 
@@ -103,6 +134,8 @@ def uk_plan_list(results: list[dict[str, Any]]) -> list[Plan]:
                     checks=list(r.get("checks") or []),
                     gaps=list(r.get("reasons") or []),
                 ),
+                steps=_steps([cid for cid, _months in items]),
+                meta=_years(int(r.get("years") or 0)),
             )
         )
     return out

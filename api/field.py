@@ -73,8 +73,37 @@ DEFAULT_ROTATION = {
     "punjab": ["rice", "winter_wheat"],
     "custom": ["maize", "soybean"],
 }
+TYPICAL_CROPS = {
+    "iowa": ["maize", "soybean", "winter_wheat", "oats", "alfalfa", "red_clover"],
+    "uk": ["winter_wheat", "barley", "canola", "field_pea", "oats", "spring_wheat"],
+    "punjab": ["rice", "winter_wheat", "mung_bean", "maize", "cotton", "lentil"],
+    "custom": ["maize", "soybean", "winter_wheat", "oats", "alfalfa", "red_clover"],
+}
 DEMO_ANSWERS_GAP = "Started from demo farm answers"
 _TIMELAPSE_LABELS = {"ndvi": "Plant greenness (NDVI)", "rgb": "True colour (RGB)"}
+DATASET_LABELS = {
+    "ndvi_s2": "Plant greenness, Sentinel-2",
+    "ndvi_landsat": "Plant greenness, Landsat",
+    "ndvi_modis": "Plant greenness, MODIS",
+    "rain_best_mm": "Rainfall, best available",
+    "rain_mm": "Rainfall, GPM IMERG",
+    "power_rain_mm": "Rainfall, NASA POWER",
+    "era5_precip_mm": "Rainfall, ERA5",
+    "power_t2m_c": "Air temperature, NASA POWER",
+    "power_t2m_max_c": "Daily highs, NASA POWER",
+    "power_t2m_min_c": "Daily lows, NASA POWER",
+    "era5_t2m_c": "Air temperature, ERA5",
+    "power_rh2m_pct": "Humidity, NASA POWER",
+    "power_srad": "Sunshine, NASA POWER",
+    "et0_mm": "Reference evaporation (FAO-56)",
+    "era5_evap_mm": "Evaporation, ERA5",
+    "era5_pet_mm": "Potential evaporation, ERA5",
+    "water_balance_mm": "Water balance",
+    "sm_surface": "Surface soil moisture, SMAP",
+    "sm_rootzone": "Root-zone soil moisture, SMAP",
+    "era5_soil_water": "Soil water, ERA5",
+    "grace_lwe_cm": "Regional water storage, GRACE",
+}
 
 
 def _conditions(field_id: str) -> FieldConditions:
@@ -186,12 +215,14 @@ def field_detail(field_id: str) -> FieldDetail:
     timelapse = []
     for index in ("ndvi", "rgb"):
         frames = _timelapse_frames(field_id, index)
+        size = Image.open(io.BytesIO(frames[0])).size if frames else None
         timelapse.append(
             Timelapse(
                 index=index,  # type: ignore[arg-type]
                 label=_TIMELAPSE_LABELS[index],
                 available=bool(frames),
                 frames=len(frames or ()),
+                size=size,
                 message=None if frames else "Timelapse not available for this field yet.",
                 data_through=ndvi_through,
             )
@@ -206,7 +237,10 @@ def field_detail(field_id: str) -> FieldDetail:
         else None
     )
 
-    coverage = list((payload.get("data_through") or {}).items())[:8]
+    coverage = sorted(
+        (DATASET_LABELS.get(k, k.replace("_", " ")), str(v))
+        for k, v in (payload.get("data_through") or {}).items()
+    )
     answers = DEMO_FARM_ANSWERS.get(field_id) or DEMO_FARM_ANSWERS["iowa"]
     return FieldDetail(
         field_id=field_id,
@@ -241,11 +275,12 @@ def field_detail(field_id: str) -> FieldDetail:
         ),
         timelapse=timelapse,
         reliability=Reliability(
-            coverage=[(k, str(v)) for k, v in coverage],
+            coverage=coverage,
             cross_check=cross,
         ),
         setup=FieldSetup(
             crops=list(DEFAULT_ROTATION.get(field_id, ["maize", "soybean"])),
+            typical_crops=TYPICAL_CROPS.get(field_id, TYPICAL_CROPS["custom"]),
             cover=None,
             water=answers["water_category"],
             soil=answers["soil_category"],
