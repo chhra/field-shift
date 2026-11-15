@@ -14,7 +14,7 @@ Outputs (data/processed/climate/)
   farm_climate_yearly.csv    one row per full year: rain, coldest night, frost days,
                              last spring / first autumn frost, hot days
   farm_climate_summary.json  the farm summary the rotation model reads
-                             (same keys as FAKE_FARM in team_model/model.py, plus extras)
+                             (the keys team_model/model.py uses, plus display extras)
 
 Notes
   - Only full calendar years are used, so a part year (e.g. 2026) can't bias averages.
@@ -194,13 +194,19 @@ summer_recent, summer_earlier = recent["summer_rain_mm"].mean(), earlier["summer
 hot_recent, hot_earlier = recent["hot_days"].mean(), earlier["hot_days"].mean()
 
 summary = {
-    # ---- the keys the rotation model uses (same as FAKE_FARM) ----
+    # ---- the keys the rotation model uses ----
     "annual_rain_mm": round(float(yearly["rain_mm"].mean())),
     "wet_months": sorted(monthly.nlargest(WET_MONTHS_N, "water_balance_mm")["month"].astype(int).tolist()),
     "dry_months": monthly.loc[monthly["water_balance_mm"] < 0, "month"].astype(int).tolist(),
     "frost_months": monthly.loc[monthly["frost_days"] >= FROST_MONTH_DAYS, "month"].astype(int).tolist(),
     "coldest_temp_c": round(float(yearly["coldest_tmin_c"].median()), 1),
     "growing_temp_c": round(float(df.loc[df.index.month.isin(GROWING_MONTHS), "t2m"].mean()), 1),
+    # per-month mean air temperature, Jan..Dec, for each crop's own climate fit
+    "monthly_temp_c": [
+        round(float(monthly.loc[monthly["month"] == m, "t2m_mean_c"].iloc[0]), 2)
+        if (monthly["month"] == m).any() else None
+        for m in range(1, 13)
+    ],
     "summer_drying": bool(changed(summer_recent, summer_earlier, -1)),
     "heat_rising": bool(changed(hot_recent, hot_earlier, +1)),
 
