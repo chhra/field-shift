@@ -47,7 +47,7 @@ def conditions_takeaway(conditions: FieldConditions) -> str:
     rain = feat.rain_annual_mm
     if bare and rain:
         return (
-            f"Satellites show {bare.lower()}, with about {rain:.0f} mm of rain "
+            f"Satellites show {bare}, with about {rain:.0f} mm of rain "
             f"in a typical year across this field."
         )
     if rain:

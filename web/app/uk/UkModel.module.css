@@ -1,0 +1,69 @@
+.intro {
+  max-width: var(--measure);
+  margin: 16px 0 0;
+  font-size: 18px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.intro + p[role="status"] {
+  margin-top: 20px;
+}
+
+.station {
+  margin-top: 32px;
+}
+
+.gauge {
+  display: grid;
+  gap: 0;
+  margin: 14px 0;
+}
+
+.gauge div {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+}
+
+.gauge dt {
+  color: var(--muted);
+}
+
+.gauge dd {
+  margin: 0;
+}
+
+@media (max-width: 560px) {
+  .gauge div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+}
+
+.cropsNote {
+  max-width: 60ch;
+  margin-bottom: 18px;
+}
+
+.caveats {
+  display: grid;
+  gap: 12px;
+  max-width: var(--measure);
+  margin: 0;
+  padding-left: 20px;
+  font-size: 15.5px;
+  line-height: 1.5;
+}
+
+.sources {
+  margin-top: 28px;
+}
+
+.src {
+  max-width: 48ch;
+  text-align: right;
+  white-space: normal !important;
+}

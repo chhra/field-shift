@@ -8,13 +8,17 @@ field (coordinates on a map, or the built-in Rothamsted Broadbalk demo), their c
 rotation, soil, water source and priorities. Field Shift pulls **20+ years of NASA POWER
 daily climate data** for that exact point, builds a farm climate profile, and runs it
 through a **transparent, rule-based agronomy engine** that returns the current rotation
-plus two scored alternatives — each one explained: the benefits, the risks, the data
-gaps, and what still needs a local expert. Nothing is a black box; every point in a
-score traces back to a readable rule.
+plus recommended and alternative options — each one explained: the benefits, the risks,
+the data gaps, and what still needs a local expert. Ranking stays inside the engines;
+the UI shows plans and calendars, not scores.
 
-**UI:** Streamlit multipage app (`app.py` + `views/`). **Core:** plain Python package `fieldshift/`.
-**UK rotation model:** rule-based engine in `team_model/`.
-Routes: `/` (Home), `/field`, UK model, `/how-it-works`. Python **3.12** (see `.python-version`).
+**UI:** Next.js web app (`web/`) on a FastAPI layer (`api/`). **Core:** plain Python
+packages `fieldshift/` (Field engine) and `team_model/` (UK rotation rules); the API
+wraps them, it does not reimplement them. Routes: `/` (Home), `/field`, `/uk`,
+`/how-it-works`. Python **3.12** (see `.python-version`), Node **20+**.
+
+The Streamlit app (`app.py` + `views/`) is **legacy**: it still runs and shares the same
+presenters (`ui/plans.py`, `ui/year_strip.py`), but new UI work goes into `web/`.
 
 ## What it does
 
@@ -23,8 +27,8 @@ Routes: `/` (Home), `/field`, UK model, `/how-it-works`. Python **3.12** (see `.
   wet/dry months, frost windows, growing-season temperature and multi-year heat and
   drought trends.
 - **Rotation comparison, not a single answer.** Returns the farmer's current rotation
-  plus **Option A (best fit)** and **Option B (alternative)**, each with a score, the
-  points behind it, benefits, risks, reasons and local-expert checks.
+  plus a **recommended** option and an **alternative**, each with benefits, risks,
+  reasons and local-expert checks.
 - **Explainable by design.** Every rotation is scored across nine agronomy "buckets"
   (soil, water, fertility, forage, organic matter, sequence, income, climate, change),
   weighted by the farmer's own priorities. You can read exactly why one rotation beat
@@ -35,46 +39,58 @@ Routes: `/` (Home), `/field`, UK model, `/how-it-works`. Python **3.12** (see `.
 
 ## Architecture
 
-Two independent engines share one UI:
+Two independent engines share one API and UI:
 
 | Engine | Lives in | Drives | What it is |
 | --- | --- | --- | --- |
 | **Global field engine** | `fieldshift/` | Field page | Earth Engine + NASA POWER field analysis (NDVI, ET0, suitability) for any point on Earth. |
 | **UK rotation model** | `team_model/` | UK model page + Home live-coordinate flow | Rule-based crop-rotation scoring over 25 UK crops, FAO EcoCrop climate envelopes and a crop-successor matrix. |
 
+- `api/` — FastAPI routes that wrap both engines for the web app.
+- `web/` — Next.js / React frontend.
 - `team_model/model.py` — the rule engine: `recommend()`, `score()`, candidate
   generation, change-counting, climate suitability. Rotations stay within
   `MAX_ROTATION_YEARS` (5).
 - `team_model/live_climate.py` — builds a farm climate summary + daily weather from
   NASA POWER for **any UK coordinates**, live (same maths as the committed Broadbalk
   files). Rejects locations outside the UK bounding box before any network call.
-- `team_model/app_adapter.py` — the bridge between the Streamlit inputs (crop ids,
-  goals 0–2, water/soil keys) and the model's vocabulary.
+- `team_model/app_adapter.py` — the bridge between the UI inputs (crop ids, goal order,
+  water/soil keys) and the model's vocabulary.
 
 ## Quick start
 
 ```bash
 cp .env.example .env
 python3.12 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt          # runtime (Cloud / Docker)
+pip install -r api/requirements.txt      # engines + FastAPI
 # pip install -r requirements-dev.txt    # + pytest, ruff
 
 # Optional: Earth Engine secrets (never commit)
 # place service account JSON at secrets/ee-key.json
 python tools/make_secrets.py          # local .streamlit/secrets.toml (path-based)
 python tools/print_cloud_secrets.py   # secrets/cloud_secrets.toml for Cloud copy-paste
-
-streamlit run app.py
 ```
 
-Open http://localhost:8501
+Run the API and the web app in two terminals:
+
+```bash
+PYTHONPATH=. uvicorn api.main:app --reload --port 8000   # http://127.0.0.1:8000/docs
+
+cd web && npm install && npm run dev                     # http://localhost:3000
+```
+
+The web app proxies `/api/*` to `FIELD_SHIFT_API_URL` (default `http://127.0.0.1:8000`).
+The API allows browser origins from `FIELD_SHIFT_WEB_ORIGINS` (default `http://localhost:3000`).
+Without Earth Engine secrets the demo fields still work; live field analysis is switched off.
+
+Legacy Streamlit UI: `pip install -r requirements.txt && streamlit run app.py` (port 8501).
 
 On Windows PowerShell the venv steps differ slightly:
 
 ```powershell
 python -m venv .venv ; .\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-streamlit run app.py
+pip install -r api/requirements.txt
+PYTHONPATH=. uvicorn api.main:app --reload --port 8000
 ```
 
 Without Earth Engine secrets the app runs in **demo/mock mode**: the Field page uses
@@ -84,13 +100,14 @@ cached data, and the UK model runs on the committed Rothamsted Broadbalk climate
 
 ```bash
 pip install -r requirements-dev.txt
-ruff check fieldshift ui views scripts tests app.py
-pytest
+ruff check fieldshift ui views api scripts tests app.py
+pytest                          # engines, presenters and API (FastAPI TestClient)
+cd web && npm run typecheck     # TypeScript
 ```
 
-The suite (`tests/`, 16 modules) covers the rule engine, the farmer-input bridge, the
-Earth Engine services, ET0 maths, Streamlit page smoke tests and the live UK-climate
-bounds. Run a single module with `pytest tests/test_team_model.py`, and use
+The suite (`tests/`) covers the rule engine, the farmer-input bridge, the Earth Engine
+services, ET0 maths, Streamlit page smoke tests, the live UK-climate bounds and the
+web API. Run a single module with `pytest tests/test_team_model.py`, and use
 `PYTHONIOENCODING=utf-8` on Windows if console output trips on Unicode.
 
 ### Data layer CLI (Phase 2)
@@ -137,17 +154,20 @@ See `data/processed/climate/station_vs_nasa_rain_summary.json`.
 ## Project layout
 
 ```
-app.py                     # Streamlit entry + top navigation
-views/                     # Home, Field, UK model, How it works
+api/                       # FastAPI layer over fieldshift + team_model
+web/                       # Next.js frontend (primary UI)
+app.py                     # Streamlit entry + top navigation (legacy)
+views/                     # Streamlit Home, Field, UK model, How it works
 fieldshift/                # global field engine (data, geo, models, services, engine)
 team_model/                # UK rule-based rotation model + live climate + app adapter
+ui/                        # shared presenters (plans, year strip) for Streamlit + API
 scripts/                   # reproducible data-build scripts (climate, crops)
 data/raw/ , data/processed/# inputs as downloaded / script outputs
-tests/                     # pytest suite (engine, inputs, services, pages)
+tests/                     # pytest suite (engine, inputs, services, pages, API)
 tools/                     # secrets + Earth Engine helpers
 ```
 
-## Deploy — Streamlit Community Cloud
+## Deploy — Streamlit Community Cloud (legacy UI)
 
 1. Push this repo to GitHub.
 2. https://share.streamlit.io → **New app** · main file `app.py`.
@@ -158,6 +178,9 @@ tools/                     # secrets + Earth Engine helpers
 A `Dockerfile` and `docker-compose.yml` are included for container deploys, and
 `render.yaml` for Render. The UK model and its Broadbalk demo need no secrets and work
 in every deploy mode; only live Earth Engine field analysis needs the service account.
+
+For the Next.js UI, host the FastAPI app and `web/` together (e.g. Railway or Render),
+or put `web/` on Vercel and point `FIELD_SHIFT_API_URL` at the API host.
 
 ## Limitations & cut list
 

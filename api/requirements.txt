@@ -1,0 +1,5 @@
+# Web API extras on top of the engine requirements.
+# Install: pip install -r api/requirements.txt
+-r ../requirements.txt
+fastapi==0.115.6
+uvicorn[standard]==0.32.1

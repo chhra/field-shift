@@ -1,0 +1,102 @@
+.slots {
+  display: grid;
+  gap: 4px;
+}
+
+.sub {
+  margin-bottom: 10px;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.slotGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px 16px;
+  margin-top: 20px;
+  max-width: 760px;
+}
+
+.slot {
+  display: block;
+  min-width: 0;
+}
+
+.cropSelect {
+  position: relative;
+  display: block;
+}
+
+.cropSelect :global(.select) {
+  padding-left: 36px;
+}
+
+.swatch {
+  position: absolute;
+  top: 50%;
+  left: 13px;
+  width: 14px;
+  height: 14px;
+  margin-top: -7px;
+  border-radius: 4px;
+  background: var(--tone);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
+  pointer-events: none;
+}
+
+.swatchNone {
+  background:
+    radial-gradient(circle at 1px 1px, rgba(120, 88, 48, 0.24) 0.8px, transparent 1.1px) 0 0 / 4px 4px,
+    var(--tone-bare);
+}
+
+@media (max-width: 720px) {
+  .slotGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 420px) {
+  .slotGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.options {
+  position: relative;
+  transition: opacity 0.2s ease;
+}
+
+.options[data-pending="true"] {
+  opacity: 0.6;
+}
+
+.status {
+  position: absolute;
+  top: -28px;
+  right: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.groupTitle {
+  margin: 8px 0 16px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+
+.groupTitle:not(:first-of-type) {
+  margin-top: 44px;
+}
+
+.setAside {
+  margin-top: 40px;
+}
+
+.setAsideNote {
+  margin-bottom: 16px;
+  max-width: var(--measure);
+  color: var(--muted);
+}

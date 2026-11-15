@@ -1,0 +1,215 @@
+.figure {
+  margin: 0;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  margin: 0 0 14px;
+  padding: 0;
+  list-style: none;
+  font-size: 13.5px;
+  color: var(--ink);
+}
+
+.legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.keyLine,
+.keyBar,
+.keyDash {
+  display: inline-block;
+  flex: none;
+}
+
+.keyLine {
+  width: 18px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--series-green);
+}
+
+.keyBar {
+  width: 10px;
+  height: 12px;
+  border-radius: 2px;
+  background: var(--series-rain);
+  opacity: 0.55;
+}
+
+.keyDash {
+  width: 18px;
+  height: 0;
+  border-top: 2px dashed var(--series-balance);
+}
+
+.wrap {
+  position: relative;
+  width: 100%;
+}
+
+.svg {
+  display: block;
+  width: 100%;
+  overflow: visible;
+  touch-action: pan-y;
+}
+
+.svg:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+
+.bareBand {
+  fill: rgba(230, 159, 0, 0.12);
+}
+
+.stressBand {
+  fill: rgba(213, 94, 0, 0.1);
+}
+
+.linked {
+  fill: rgba(35, 39, 31, 0.06);
+  stroke: rgba(35, 39, 31, 0.16);
+  stroke-width: 1;
+  transition: x 0.25s var(--ease-out);
+}
+
+.bareLabel,
+.stressLabel,
+.peakLabel {
+  font-size: 11.5px;
+  font-weight: 560;
+  paint-order: stroke;
+  stroke: rgba(255, 255, 255, 0.85);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+.bareLabel {
+  fill: #8a5a12;
+}
+
+.stressLabel {
+  fill: #9a3f05;
+}
+
+.peakLabel {
+  fill: #00684c;
+}
+
+.tickOn {
+  fill: var(--ink);
+  font-weight: 650;
+}
+
+.grid {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.zero {
+  stroke: var(--line-strong);
+  stroke-width: 1;
+}
+
+.tickL,
+.tickR,
+.tickX {
+  font-size: 11.5px;
+  fill: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.tickL {
+  text-anchor: end;
+}
+
+.tickR {
+  text-anchor: start;
+}
+
+.bar {
+  fill: var(--series-rain);
+  opacity: 0.5;
+}
+
+.ndvi {
+  fill: none;
+  stroke: var(--series-green);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+
+.dotN {
+  fill: var(--series-green);
+  stroke: #fff;
+  stroke-width: 1.5;
+  transition: r 0.12s ease;
+}
+
+.balance {
+  fill: none;
+  stroke: var(--series-balance);
+  stroke-width: 2;
+  stroke-dasharray: 6 5;
+}
+
+.guide {
+  stroke: var(--ink);
+  stroke-opacity: 0.35;
+  stroke-width: 1;
+}
+
+.tip {
+  position: absolute;
+  top: 6px;
+  transform: translateX(-50%);
+  min-width: 170px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 10px 30px -16px rgba(35, 39, 31, 0.35);
+  font-size: 13px;
+  pointer-events: none;
+}
+
+.tipMonth {
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+.tip dl {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+}
+
+.tip dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.tip dt {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+}
+
+.tip dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  font-weight: 550;
+}
+
+.tipNote {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}

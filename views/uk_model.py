@@ -21,6 +21,7 @@ from fieldshift.engine.inputs_config import (
 from team_model import app_adapter, model
 from ui.components import fact_chips, hero, question, recommendation_banner, section
 from ui.goal_rank import goal_ranking
+from ui.plans import uk_recommendation_sentence
 from ui.strategy_cards import render_uk_option_plans
 
 _MONTHS = model.MONTHS
@@ -316,14 +317,9 @@ except ValueError as err:
 results = out["results"]
 base = results[0]
 
-if len(results) > 1:
-    best = results[1]
-    years = best["years"]
-    year_word = "year" if years == 1 else "years"
-    recommendation_banner(
-        f"{best['rotation']} ({years} {year_word}) is the recommended option "
-        f"for your priorities, ahead of your current rotation."
-    )
+banner = uk_recommendation_sentence(results)
+if banner:
+    recommendation_banner(banner)
 else:
     st.info(base["reasons"][-1] if base["reasons"] else "No alternative rotation was found.")
 
