@@ -12,6 +12,7 @@ PAGE_FILES = [
     REPO / "views" / "home.py",
     REPO / "views" / "field.py",
     REPO / "views" / "how_it_works.py",
+    REPO / "views" / "uk_model.py",
 ]
 
 
