@@ -98,7 +98,7 @@ CONTRAST_PAIRS: list[tuple[str, str, str, float]] = [
     ("text_on_sidebar", TEXT, SIDEBAR, 4.5),
 ]
 
-_THEME_VERSION = "visual-questions-v1"
+_THEME_VERSION = "goal-ranking-v2"
 
 
 def inject_nav_active(active_path: str) -> None:
@@ -448,13 +448,30 @@ div[data-testid="stRadio"] label[data-baseweb="radio"] [data-testid="stMarkdownC
   div[data-testid="stRadio"] label[data-baseweb="radio"] {{ transition: none; }}
 }}
 
-/* Goal cards: three equal reply tiles */
-[class*="st-key-goal-"] [role="radiogroup"] {{ flex-wrap: nowrap !important; gap: 6px !important; }}
-[class*="st-key-goal-"] [role="radiogroup"] > label[data-baseweb="radio"] {{
-  flex: 1 1 0;
-  min-width: 0;
-  padding: 6px 8px 6px 6px !important;
-  min-height: 40px !important;
+/* Goal ranking rows: text + up/down/remove stay on one line, phones too */
+[class*="st-key-rank-row-"] {{
+  border: 1px solid {CARD_BORDER};
+  border-radius: 10px;
+  padding: 6px 6px 6px 12px;
+  background: {SURFACE};
+}}
+[class*="st-key-rank-row-"] [data-testid="stHorizontalBlock"] {{
+  flex-wrap: nowrap !important;
+  gap: 4px !important;
+}}
+[class*="st-key-rank-row-"] [data-testid="stColumn"] {{
+  flex: 0 0 44px !important;
+  width: 44px !important;
+  min-width: 0 !important;
+}}
+[class*="st-key-rank-row-"] [data-testid="stColumn"]:first-child {{
+  flex: 1 1 auto !important;
+  width: auto !important;
+}}
+[class*="st-key-rank-row-"] button {{
+  width: 44px;
+  min-height: 44px;
+  padding: 0 !important;
 }}
 
 /* Soil tiles carry a colour swatch of the soil */
@@ -617,28 +634,67 @@ p.fs-year-title {{
   box-shadow: inset 0 0 0 1px rgba(0,0,0,.1);
 }}
 
-/* Goal cards and the ranking mix bar */
-p.fs-goal-name {{
+/* Goal ranking and the mix bar */
+.fs-rank {{
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin: 0;
-  font-size: 15px;
-  font-weight: 600;
-  line-height: 1.25;
-  color: {TEXT};
+  gap: 10px;
+  min-width: 0;
 }}
-.fs-goal-name i {{
+.fs-rank-num {{
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: {PRIMARY};
+  color: {SURFACE};
+  font-size: 14px;
+  font-weight: 700;
+}}
+.fs-rank i {{
   flex: none;
   width: 10px;
   height: 10px;
   border-radius: 50%;
 }}
-p.fs-goal-q {{
-  margin: 4px 0 0 0;
-  min-height: 2.7em;
+.fs-rank-text {{
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}}
+.fs-rank-name {{
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: {TEXT};
+}}
+.fs-rank-q {{
+  font-size: 13px;
+  line-height: 1.3;
+  color: {MUTED};
+}}
+.fs-rank-share {{
+  margin-left: auto;
+  padding-left: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: {TEXT};
+}}
+@media (max-width: 640px) {{
+  .fs-rank-q {{ display: none; }}
+  [class*="st-key-rank-row-"] [data-testid="stColumn"] {{
+    flex-basis: 40px !important;
+    width: 40px !important;
+  }}
+  [class*="st-key-rank-row-"] button {{ width: 40px; }}
+}}
+p.fs-rank-out {{
+  margin: 14px 0 4px 0;
   font-size: 13.5px;
-  line-height: 1.35;
   color: {MUTED};
 }}
 .fs-mix {{ margin: 18px 0 4px 0; }}

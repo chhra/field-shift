@@ -244,8 +244,9 @@ QUESTIONS: dict[str, tuple[str, str]] = {
         "Rub some between your fingers. Soil type sets how much rain the ground holds.",
     ),
     "goals": (
-        "What matters to you?",
-        "Answer each question. The options below re-rank as you tap.",
+        "What matters most to you?",
+        "Put your goals in order. Your first goal counts most when we rank the "
+        "options; remove any that don't matter.",
     ),
 }
 
@@ -263,9 +264,6 @@ SOIL_TILES: dict[str, str] = {
     "clay": "Clay · sticky",
     "not_sure": "Not sure",
 }
-
-# Goal questions are yes/no, so the three levels read as answers.
-GOAL_REPLIES: dict[int, str] = {0: "No", 1: "Yes", 2: "A lot"}
 
 IMPORTANCE_LABELS: dict[int, str] = {
     0: "Not important",
@@ -365,6 +363,37 @@ def normalize_goal_weights(
         equal = 1.0 / len(GOAL_KEYS)
         return {k: equal for k in GOAL_KEYS}, EQUAL_WEIGHTS_NOTE
     return {k: raw[k] / total for k in GOAL_KEYS}, None
+
+
+NO_GOALS_NOTE = "No goals in your list — using equal weights so options can still be ranked."
+
+
+def default_goal_order(importance: dict[str, int]) -> list[str]:
+    """0/1/2 answers → goal keys most important first; 0 is left out of the list."""
+    picked = [k for k in GOAL_KEYS if int(importance.get(k, 0)) > 0]
+    return sorted(picked, key=lambda k: -int(importance[k]))
+
+
+def rank_goal_weights(
+    order: list[str],
+) -> tuple[dict[str, float], dict[str, int], str | None]:
+    """Rank-sum weights: with n goals listed, 1st counts n, 2nd n−1, … last 1.
+
+    Goals not in the list weigh 0. Returns (weights summing to 1, 0/1/2 importance
+    for forage gating — top goal 2, other listed 1, unlisted 0, note or None).
+    """
+    order = [k for k in dict.fromkeys(order) if k in GOAL_KEYS]
+    if not order:
+        equal = 1.0 / len(GOAL_KEYS)
+        return {k: equal for k in GOAL_KEYS}, {k: 0 for k in GOAL_KEYS}, NO_GOALS_NOTE
+    n = len(order)
+    total = n * (n + 1) / 2
+    weights = {k: 0.0 for k in GOAL_KEYS}
+    importance = {k: 0 for k in GOAL_KEYS}
+    for i, k in enumerate(order):
+        weights[k] = (n - i) / total
+        importance[k] = 2 if i == 0 else 1
+    return weights, importance, None
 
 
 def forage_goal_active(importance: dict[str, int] | None) -> bool:

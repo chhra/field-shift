@@ -11,7 +11,6 @@ from fieldshift.engine.inputs_config import (
     GOAL_LABELS,
     GOAL_MEASURED,
     GOAL_PLAIN,
-    IMPORTANCE_LABELS,
     LIMITED_IRRIGATION_ALLOWANCE,
     SOIL_AWC_MM_PER_M,
     SOIL_HINT,
@@ -22,6 +21,7 @@ from fieldshift.engine.inputs_config import (
     WATER_HINT,
     WATER_LABELS,
     WATER_WHY,
+    rank_goal_weights,
 )
 from fieldshift.services import list_sources, using_mock_data
 from ui.charts import pipeline_figure
@@ -56,7 +56,7 @@ st.markdown(
 2. Derive bare months, stress months, frost window, water balance, trends.  
 3. Flag unusual seasons with an IsolationForest anomaly model (**SI**).  
 4. Generate rotation candidates (current + cover + swaps).  
-5. Score the **six farmer goals** with your importance weights.  
+5. Score the **six farmer goals** and weight them by the order you put them in.  
 6. Explain each card with evidence, benefits, and local risks.  
 """
 )
@@ -68,7 +68,7 @@ section(
 st.markdown(
     """
 1. **Your field** — confirm the map polygon satellites watch.  
-2. **What you grow now** — confirm the crop in each satellite season; planting/harvest
+2. **What you grow now** — how many crops, then each crop in order; planting/harvest
    months stay tucked away unless satellites got them wrong.  
 3. **Where your water comes from** — """
     + f"*{WATER_HINT}*  \n"
@@ -80,7 +80,7 @@ st.markdown(
     + f"{SOIL_WHY}  \n"
     + " · ".join(f"**{SOIL_LABELS[k]}**" for k in SOIL_LABELS)
     + """  
-5. **What matters to you** — each goal Not important / Important / Very important.  
+5. **What matters most to you** — put the goals in order; remove any that don't matter.  
 """
 )
 
@@ -93,13 +93,20 @@ for key in GOAL_KEYS:
     )
 
 section("Category → number mappings")
-st.markdown("**Goal importance**")
+st.markdown("**Goal order → weight (all six goals kept)**")
+_ranked_weights, _, _ = rank_goal_weights(list(GOAL_KEYS))
 st.dataframe(
-    [{"Label": IMPORTANCE_LABELS[i], "Score": i} for i in (0, 1, 2)],
+    [
+        {"Place": f"{i + 1}", "Weight": f"{_ranked_weights[k]:.0%}"}
+        for i, k in enumerate(GOAL_KEYS)
+    ],
     hide_index=True,
     use_container_width=True,
 )
-st.caption("Weight = score ÷ sum of scores. All Not important → equal weights + note.")
+st.caption(
+    "Rank-sum weights: with n goals in your list, 1st counts n, 2nd n − 1, … last 1, "
+    "divided by the total. Removed goals count 0. No goals left → equal weights + note."
+)
 
 st.markdown("**Soil available water (FAO-56 Table 19 midpoints)**")
 st.dataframe(

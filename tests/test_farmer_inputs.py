@@ -17,10 +17,13 @@ from fieldshift.engine.inputs_config import (
     GOAL_LABELS,
     GOAL_PLAIN,
     LIMITED_IRRIGATION_ALLOWANCE,
+    NO_GOALS_NOTE,
     SOIL_AWC_MM_PER_M,
     SOIL_WHY,
     WATER_WHY,
+    default_goal_order,
     normalize_goal_weights,
+    rank_goal_weights,
     resolve_soil_category,
     resolve_water_access,
 )
@@ -78,6 +81,55 @@ def test_weight_normalization_and_all_zero_note() -> None:
     w0, note0 = normalize_goal_weights({k: 0 for k in GOAL_KEYS})
     assert note0 == EQUAL_WEIGHTS_NOTE
     assert all(abs(v - 1 / 6) < 1e-9 for v in w0.values())
+
+
+def test_rank_weights_follow_farmer_order() -> None:
+    w, imp, note = rank_goal_weights(["market", "water", "erosion"])
+    assert note is None
+    assert abs(sum(w.values()) - 1.0) < 1e-9
+    assert w["market"] == pytest.approx(3 / 6)
+    assert w["water"] == pytest.approx(2 / 6)
+    assert w["erosion"] == pytest.approx(1 / 6)
+    assert w["forage"] == w["nitrogen"] == w["organic_matter"] == 0.0
+    assert imp["market"] == 2 and imp["water"] == 1 and imp["forage"] == 0
+
+    w6, _, _ = rank_goal_weights(list(GOAL_KEYS))
+    shares = [w6[k] for k in GOAL_KEYS]
+    assert shares == sorted(shares, reverse=True)
+    assert shares[0] == pytest.approx(6 / 21) and shares[-1] == pytest.approx(1 / 21)
+
+    w0, imp0, note0 = rank_goal_weights([])
+    assert note0 == NO_GOALS_NOTE
+    assert all(abs(v - 1 / 6) < 1e-9 for v in w0.values())
+    assert not any(imp0.values())
+
+
+def test_default_goal_order_from_demo_answers() -> None:
+    order = default_goal_order(
+        {"water": 1, "forage": 0, "nitrogen": 1, "erosion": 2, "organic_matter": 1,
+         "market": 1}
+    )
+    assert order == ["erosion", "water", "nitrogen", "organic_matter", "market"]
+
+
+def test_goal_order_changes_which_option_ranks_first() -> None:
+    tidy, daily, _ = _iowa()
+
+    def top_two(order: list[str]) -> list[str]:
+        weights, importance, _ = rank_goal_weights(order)
+        req = StrategyRequest(
+            current_rotation=["maize", "soybean"],
+            water_category="rain_only",
+            soil_category="loamy",
+            goal_importance=GoalImportanceSet(**importance),
+            weights=PriorityWeights(**weights),
+        )
+        cards = generate_strategies("iowa", tidy, req, daily=daily).strategies
+        return [c.id for c in sorted(cards, key=lambda c: -c.scores.total)][:2]
+
+    soil_first = top_two(["erosion", "organic_matter", "nitrogen", "water", "market"])
+    market_first = top_two(["market", "water", "nitrogen", "organic_matter", "erosion"])
+    assert soil_first != market_first
 
 
 def test_forage_counts_only_when_goal_active(_iowa_fix=None) -> None:
