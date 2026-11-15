@@ -8,7 +8,7 @@ so the UK rotation model can run at their own location, not only at Rothamsted.
 Public entry point
     build_farm_from_power(lat, lon) -> (farm_summary_dict, daily_weather_df)
 
-The farm dict has the same keys as team_model.model.FAKE_FARM (plus the extras the
+The farm dict has the same keys as the committed farm_climate_summary.json (plus the extras the
 UK page shows); the weather df has the same columns as nasa_power_clean.csv, indexed
 by date, full calendar years only — exactly what model.recommend() consumes.
 
@@ -109,7 +109,7 @@ def _clean_daily(lat: float, lon: float) -> pd.DataFrame:
 
 
 def _summarize(df: pd.DataFrame) -> dict:
-    """Farm summary dict (same keys as model.FAKE_FARM + the UK page extras)."""
+    """Farm summary dict (same keys as farm_climate_summary.json + the UK page extras)."""
     latitude = float(df["latitude"].iloc[0])
     longitude = float(df["longitude"].iloc[0])
     full_years = sorted(df.index.year.unique().tolist())
@@ -164,7 +164,7 @@ def _summarize(df: pd.DataFrame) -> dict:
     hot_earlier = float(earlier["hot_days"].mean()) if len(earlier) else hot_recent
 
     return {
-        # keys the rotation model uses (same as FAKE_FARM)
+        # keys the rotation model uses (same as farm_climate_summary.json)
         "annual_rain_mm": round(float(yearly["rain_mm"].mean())),
         "wet_months": sorted(
             monthly.nlargest(WET_MONTHS_N, "water_balance_mm")["month"].astype(int).tolist()
@@ -179,6 +179,13 @@ def _summarize(df: pd.DataFrame) -> dict:
         "growing_temp_c": round(
             float(df.loc[df.index.month.isin(GROWING_MONTHS), "t2m"].mean()), 1
         ),
+        # per-month mean air temperature, Jan..Dec, for each crop's own climate fit
+        "monthly_temp_c": [
+            round(float(monthly.loc[monthly["month"] == m, "t2m_mean_c"].iloc[0]), 2)
+            if (monthly["month"] == m).any()
+            else None
+            for m in range(1, 13)
+        ],
         "summer_drying": bool(_changed(summer_recent, summer_earlier, -1)),
         "heat_rising": bool(_changed(hot_recent, hot_earlier, +1)),
         # extras shown on the UK page

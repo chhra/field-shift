@@ -133,15 +133,18 @@ def crops_from_app_ids(crop_ids):
 def load_data():
     """Load the model's data once: (crops, successors, farm, weather).
 
-    Uses the real farm climate if the NASA files exist, otherwise the model's
-    FAKE_FARM with no daily weather (so heat stress and daily frost are skipped).
     This is the Rothamsted Broadbalk default, used when the farmer gives no
-    coordinates (see load_location_data for an entered location).
+    coordinates (see load_location_data for an entered location). The farm climate
+    and daily weather come from the committed NASA POWER files; build them with
+    scripts/climate/build_farm_climate.py if they are missing.
     """
     crops, successors = model.load_crops(), model.load_successors()
-    if model.FARM_FILE.exists() and model.WEATHER_FILE.exists():
-        return crops, successors, model.load_farm(), model.load_weather()
-    return crops, successors, dict(model.FAKE_FARM), None
+    if not (model.FARM_FILE.exists() and model.WEATHER_FILE.exists()):
+        raise FileNotFoundError(
+            "Farm climate data is missing. Run scripts/climate/build_farm_climate.py "
+            "to build it from NASA POWER, or enter coordinates for a live location."
+        )
+    return crops, successors, model.load_farm(), model.load_weather()
 
 
 @lru_cache(maxsize=8)

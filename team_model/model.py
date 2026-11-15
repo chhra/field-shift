@@ -106,8 +106,8 @@ WEATHER_FILE = DATA_DIR / "processed" / "climate" / "nasa_power_clean.csv"
 # Crop-specific climate indices (see crop_climate()):
 RECENT_YEARS = 10          # heat stress is judged on the last 10 full years
 HEAT_RISK_DAYS = 3         # >= 3 heat-stress days a year at flowering -> risk; >= 1 -> check
-WINTER_KILL_RISK_PCT = 20  # killing frost in >= 20% of winters -> risk; any -> check
-SPRING_FROST_CHECK_PCT = 25  # frost below the growing kill temperature after sowing in >= 25% of years -> check
+WINTER_KILL_RISK_PCT = 20  # >= 20% of winters -> "most winters" wording (a warning only, no points)
+SPRING_FROST_CHECK_PCT = 25  # frost below the growing kill temperature after sowing in >= 25% of years -> check (no points)
 
 # Candidate rotations (see candidates()): the model may make the rotation up to
 # 2 years longer by adding break crops, but never longer than this.
@@ -161,23 +161,6 @@ ECOCROP_COLUMNS = {
 # match) gets "unknown" instead of being wrongly called unsuitable.
 CLIMATE_COLUMNS = ["rain_abs_min_mm", "rain_abs_max_mm", "rain_opt_min_mm", "rain_opt_max_mm",
                    "temp_abs_min_c", "temp_abs_max_c", "temp_opt_min_c", "temp_opt_max_c"]
-
-# -----------------------------------------------------------------------------
-# FAKE farm climate, for testing without the NASA files.
-# The real one is farm_climate_summary.json (see load_farm()), which has these
-# same keys plus extras, made by scripts/climate/build_farm_climate.py.
-# Months are numbers: 1 = January ... 12 = December.
-# -----------------------------------------------------------------------------
-FAKE_FARM = {
-    "annual_rain_mm": 850,           # average total rain per year (mm)
-    "wet_months": [10, 11, 12, 1],   # the 4 months with the biggest water surplus (rain - ET0)
-    "dry_months": [6, 7, 8],         # months where rain is less than evaporation
-    "frost_months": [12, 1, 2],      # months with frost days on average
-    "coldest_temp_c": -6,            # lowest winter temperature (°C)
-    "growing_temp_c": 15,            # average temperature in the growing season (°C)
-    "summer_drying": True,           # True if summer rain has fallen in recent years
-    "heat_rising": True,             # True if hot days have increased in recent years
-}
 
 # -----------------------------------------------------------------------------
 # Some crop families must not come back to the same field too often, because
@@ -255,7 +238,7 @@ def load_successors(path=SUCCESSORS_FILE):
 
 
 def load_farm(path=FARM_FILE):
-    """Read the farm's climate summary (same keys as FAKE_FARM, plus extras)."""
+    """Read the farm's climate summary (the keys the model uses, plus display extras)."""
     return json.loads(Path(path).read_text(encoding="utf-8"))
 
 
@@ -323,6 +306,47 @@ def is_winter_sown(c):
     return int(c["sow_month"]) in (8, 9, 10, 11)
 
 
+# Months a ley (perennial) is treated as actively growing, for its climate fit.
+GROWING_SEASON_MONTHS = [4, 5, 6, 7, 8, 9]
+
+
+def growing_season_temp(c, farm):
+    """Mean air temperature over the months THIS crop is actively in the ground.
+
+    EcoCrop's optimal temperature is a growing-cycle optimum, so comparing it with
+    one farm-wide growing-season average put almost every UK crop just below its
+    optimum and told the ranking little. Using each crop's own months (sowing to
+    harvest, or the warm season for a ley) gives a fairer, more discriminating fit.
+
+    Falls back to the farm-wide growing-season mean when no monthly profile is
+    present (e.g. a minimal farm dict used in tests)."""
+    monthly = farm.get("monthly_temp_c")
+    if not monthly:
+        return farm["growing_temp_c"]
+    if is_perennial(c):
+        months = GROWING_SEASON_MONTHS
+    else:
+        s, h = int(c["sow_month"]), int(c["harvest_month"])
+        months = [s] + months_between(s, h) + [h]
+    temps = [monthly[m - 1] for m in months if 1 <= m <= 12 and pd.notna(monthly[m - 1])]
+    return round(sum(temps) / len(temps), 1) if temps else farm["growing_temp_c"]
+
+
+def sown_into_frost(c, farm):
+    """True if the crop is sown on or before the farm's typical last spring frost,
+    so its seedlings can actually meet frost. Crops sown after the last frost has
+    passed are not flagged. Falls back to True (keep the check) when the farm has
+    no frost date."""
+    date = farm.get("median_last_spring_frost")
+    if not date:
+        return True
+    try:
+        last_frost_month = int(str(date).split("-")[0])
+    except (ValueError, IndexError):
+        return True
+    return int(c["sow_month"]) <= last_frost_month
+
+
 # =============================================================================
 # STEP A: SUITABILITY - can this crop grow here at all?
 # =============================================================================
@@ -360,10 +384,17 @@ def suitability(c, farm, check_frost=True):
         return "unsuitable", [f"growing-season temperature {t} °C is outside its range"]
 
     # 3. Is it inside the OPTIMAL range for both rain and temperature?
+    #    Temperature is taken over THIS crop's own growing months, not one farm-wide
+    #    average, so the fit actually separates warm- and cool-season crops. Rainfall
+    #    stays annual, because EcoCrop's rain range is a yearly total. The survivable
+    #    check in step 2 keeps using the farm-wide mean, so this can never newly ban a
+    #    crop, only move it between "ideal" and "possible".
+    t_crop = growing_season_temp(c, farm)
     ideal = (c["rain_opt_min_mm"] <= rain <= c["rain_opt_max_mm"]) and \
-            (c["temp_opt_min_c"] <= t <= c["temp_opt_max_c"])
+            (c["temp_opt_min_c"] <= t_crop <= c["temp_opt_max_c"])
     if not ideal:
-        notes.append("not in its ideal climate here")
+        notes.append(f"not in its ideal climate here (its growing months average "
+                     f"{t_crop:g} °C)")
 
     # 4. Frost (only for crops that spend the winter in the field).
     #    EcoCrop gives ONE killing temperature per species, but many UK varieties
@@ -656,7 +687,7 @@ def score(rotation, farm, crops, prio, successors, current=None, climate=None, s
 
     Arguments:
         rotation    list of (main crop, cover crop or None) steps
-        farm        the farm's climate (same keys as FAKE_FARM)
+        farm        the farm's climate (from load_farm(), see farm_climate_summary.json)
         crops       from load_crops()
         prio        farmer priorities, 0 (doesn't matter) to 3 (high), e.g.
                     {"soil": 3, "water": 2, "fertility": 2, "income": 2,
@@ -938,8 +969,13 @@ def score(rotation, farm, crops, prio, successors, current=None, climate=None, s
     # RULE B10 / B11: heat stress at flowering, and frost (daily NASA data)
     # Uses the crop_climate() indices, so only runs when they were computed.
     #   Heat:   ADHS in the recent years >= HEAT_RISK_DAYS -> -3 (risk); >= 1 -> -1 (check)
-    #   Winter: killing frost in >= WINTER_KILL_RISK_PCT % of winters -> -3 (risk); any -> -1
+    #   Winter: killing frost -> WARNING ONLY, no points. EcoCrop gives one killing
+    #           temperature per species, too harsh for hardy UK varieties (it would
+    #           "kill" ryegrass, winter barley and winter peas most winters), so it
+    #           would unfairly rank leys and winter crops down. Same no-points stance
+    #           the climate-fit frost note already takes.
     #   Spring: frost after sowing in >= SPRING_FROST_CHECK_PCT % of years -> check only,
+    #           and only for crops sown into the farm's frost window (see below),
     #           because young plants can often recover and EcoCrop's value is rough
     # -------------------------------------------------------------------------
     for c in mains if climate else []:
@@ -963,22 +999,30 @@ def score(rotation, farm, crops, prio, successors, current=None, climate=None, s
                 pts["climate"] -= 1
                 checks.append(line)
 
+        # Winter kill: a warning, never a points penalty. EcoCrop's single killing
+        # temperature is too harsh for hardy UK varieties, so penalising it would
+        # unfairly rank leys, winter barley and winter peas down (see rule note).
         f = cc.get("winter_frost")
         if f and f["years_pct"] > 0:
-            line = (f"{c['crop']}: nights below its killing temperature ({f['kill_c']:g} °C, "
-                    f"EcoCrop) in {f['years_pct']:.0f}% of winters: choose a hardy variety.")
-            if f["years_pct"] >= WINTER_KILL_RISK_PCT:
-                pts["climate"] -= 3
-                risks.append(line)
-            else:
-                pts["climate"] -= 1
-                checks.append(line)
+            often = ("most winters" if f["years_pct"] >= WINTER_KILL_RISK_PCT
+                     else "some winters")
+            checks.append(
+                f"{c['crop']}: cold nights reach EcoCrop's killing temperature "
+                f"({f['kill_c']:g} °C) in {f['years_pct']:.0f}% of winters ({often}), "
+                f"but hardy UK varieties usually survive — choose a hardy variety "
+                f"and check local experience.")
 
+        # Spring frost: a check, no points, and only when the crop is actually sown
+        # into the farm's frost window (crops sown after the last frost are not
+        # flagged). A seedling-specific killing temperature would be better than
+        # EcoCrop's rough 0 °C, but none is sourced yet.
         s = cc.get("spring_frost")
-        if s and s["years_pct"] >= SPRING_FROST_CHECK_PCT:
+        if s and s["years_pct"] >= SPRING_FROST_CHECK_PCT and sown_into_frost(c, farm):
+            last = farm.get("median_last_spring_frost")
+            when = f" (last frost here is typically around {last})" if last else ""
             checks.append(f"{c['crop']}: frost below {s['kill_c']:g} °C in "
                           f"{month_names(s['months'])}, just after sowing, in "
-                          f"{s['years_pct']:.0f}% of years: check the sowing date.")
+                          f"{s['years_pct']:.0f}% of years{when}: check the sowing date.")
 
     # -------------------------------------------------------------------------
     # STANDARD LOCAL CHECKS
@@ -1160,7 +1204,7 @@ def recommend(current, farm, priorities, crops, successors, weather=None, warmin
 
     Arguments:
         current     the farmer's current rotation, e.g. ["Winter wheat", "Maize", "Winter barley"]
-        farm        the farm's climate, from load_farm() (or FAKE_FARM for testing)
+        farm        the farm's climate, from load_farm() (or a small farm dict in tests)
         priorities  the six priorities in the brief, each 0 (doesn't matter) to 3 (high):
                     {"soil": 3, "water": 2, "fertility": 2, "income": 2,
                      "forage": 0, "organic_matter": 2}
@@ -1264,13 +1308,14 @@ if __name__ == "__main__":
     crops = load_crops()
     successors = load_successors()
 
-    # The real farm (NASA POWER) if the climate files exist, otherwise the fake one
-    if FARM_FILE.exists() and WEATHER_FILE.exists():
-        farm, weather = load_farm(), load_weather()
-        print(f"Farm climate: NASA POWER {farm['years']} at {farm['latitude']}, {farm['longitude']}")
-    else:
-        farm, weather = FAKE_FARM, None
-        print("Farm climate: FAKE_FARM (run scripts/climate/build_farm_climate.py for real data)")
+    # The real farm climate from NASA POWER (build it first if the files are missing)
+    if not (FARM_FILE.exists() and WEATHER_FILE.exists()):
+        raise SystemExit(
+            "No farm climate data found. Run scripts/climate/build_farm_climate.py "
+            "to build it from NASA POWER first."
+        )
+    farm, weather = load_farm(), load_weather()
+    print(f"Farm climate: NASA POWER {farm['years']} at {farm['latitude']}, {farm['longitude']}")
 
     # Change these to try different farmers:
     current = ["Winter wheat", "Maize", "Winter barley"]                  # names must match crop_practices.csv

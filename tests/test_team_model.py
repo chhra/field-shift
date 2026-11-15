@@ -9,12 +9,26 @@ ARABLE = ["Winter wheat", "Maize", "Winter barley"]
 LEY_FARM = ["Winter wheat", "Red clover ley", "Winter barley", "Winter oilseed rape"]
 OLD_PRIORITIES = {"soil": 3, "water": 2, "fertility": 2, "income": 2}
 
+# A fixed test farm, so the rule assertions below never change when the real NASA
+# farm data is rebuilt. It is deliberately local to the tests (the model itself
+# carries no mock farm: production always uses the real NASA POWER climate).
+TEST_FARM = {
+    "annual_rain_mm": 850,
+    "wet_months": [10, 11, 12, 1],
+    "dry_months": [6, 7, 8],
+    "frost_months": [12, 1, 2],
+    "coldest_temp_c": -6,
+    "growing_temp_c": 15,
+    "summer_drying": True,
+    "heat_rising": True,
+}
+
 
 @pytest.fixture(scope="module")
 def data():
     crops, successors, _farm, _weather = app_adapter.load_data()
-    # FAKE_FARM, not the NASA files: results must not change when the farm data does
-    return crops, successors, dict(model.FAKE_FARM)
+    # TEST_FARM, not the NASA files: results must not change when the farm data does
+    return crops, successors, dict(TEST_FARM)
 
 
 def run(data, current=ARABLE, priorities=OLD_PRIORITIES, **kwargs):
