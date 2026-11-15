@@ -99,7 +99,7 @@ CONTRAST_PAIRS: list[tuple[str, str, str, float]] = [
     ("text_on_sidebar", TEXT, SIDEBAR, 4.5),
 ]
 
-_THEME_VERSION = "option-plans-v1"
+_THEME_VERSION = "option-plans-v2"
 
 
 def inject_nav_active(active_path: str) -> None:
@@ -680,14 +680,6 @@ p.fs-year-title {{
   line-height: 1.3;
   color: {MUTED};
 }}
-.fs-rank-share {{
-  margin-left: auto;
-  padding-left: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: {TEXT};
-}}
 @media (max-width: 640px) {{
   .fs-rank-q {{ display: none; }}
   [class*="st-key-rank-row-"] [data-testid="stColumn"] {{
@@ -700,36 +692,6 @@ p.fs-rank-out {{
   margin: 14px 0 4px 0;
   font-size: 13.5px;
   color: {MUTED};
-}}
-.fs-mix {{ margin: 18px 0 4px 0; }}
-p.fs-mix-title {{
-  margin: 0 0 8px 0;
-  font-size: 15px;
-  font-weight: 600;
-  color: {TEXT};
-}}
-.fs-mix-bar {{
-  display: flex;
-  gap: 2px;
-  height: 18px;
-  border-radius: 9px;
-  overflow: hidden;
-}}
-.fs-mix-seg {{ min-width: 6px; }}
-.fs-mix-legend {{
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 18px;
-  margin-top: 8px;
-  font-size: 13px;
-  color: {TEXT};
-}}
-.fs-mix-legend i {{
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  margin-right: 6px;
-  border-radius: 50%;
 }}
 .fs-farm-slot-label {{
   margin: 0 0 6px 0;

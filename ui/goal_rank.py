@@ -7,10 +7,9 @@ from fieldshift.engine.inputs_config import (
     GOAL_HINTS,
     GOAL_KEYS,
     GOAL_LABELS,
-    rank_goal_weights,
+    NO_GOALS_NOTE,
 )
 
-from ui.components import goal_mix_bar
 from ui.theme import SCORE_COLORS
 
 
@@ -32,15 +31,15 @@ def _add(key: str, goal: str) -> None:
 
 
 def goal_ranking(scope: str, default_order: list[str]) -> list[str]:
-    """Render the ranked goal list + mix bar; return goal keys, most important first.
+    """Render the ranked goal list; return goal keys, most important first.
 
-    ``scope`` keeps widget keys apart per page/field (e.g. a field id or "ukm").
+    No percentages — order alone is what the farmer sets. ``scope`` keeps widget
+    keys apart per page/field (e.g. a field id or "ukm").
     """
     order_key = f"goal-order-{scope}"
     if order_key not in st.session_state:
         st.session_state[order_key] = list(default_order)
     order = [g for g in st.session_state[order_key] if g in GOAL_KEYS]
-    weights, _importance, note = rank_goal_weights(order)
 
     for i, gk in enumerate(order):
         name = GOAL_LABELS[gk]
@@ -52,8 +51,7 @@ def goal_ranking(scope: str, default_order: list[str]) -> list[str]:
                 f'<div class="fs-rank"><span class="fs-rank-num">{i + 1}</span>'
                 f'<i style="background:{SCORE_COLORS[gk]}"></i>'
                 f'<span class="fs-rank-text"><span class="fs-rank-name">{name}</span>'
-                f'<span class="fs-rank-q">{GOAL_HINTS[gk]}</span></span>'
-                f'<span class="fs-rank-share">{weights[gk]:.0%}</span></div>',
+                f'<span class="fs-rank-q">{GOAL_HINTS[gk]}</span></span></div>',
                 unsafe_allow_html=True,
             )
             c_up.button(
@@ -97,7 +95,6 @@ def goal_ranking(scope: str, default_order: list[str]) -> list[str]:
                 use_container_width=True,
             )
 
-    if note:
-        st.info(note)
-    goal_mix_bar(weights)
+    if not order:
+        st.info(NO_GOALS_NOTE)
     return order

@@ -21,7 +21,6 @@ from fieldshift.engine.inputs_config import (
     WATER_HINT,
     WATER_LABELS,
     WATER_WHY,
-    rank_goal_weights,
 )
 from fieldshift.services import list_sources, using_mock_data
 from ui.charts import pipeline_figure
@@ -93,19 +92,11 @@ for key in GOAL_KEYS:
     )
 
 section("Category → number mappings")
-st.markdown("**Goal order → weight (all six goals kept)**")
-_ranked_weights, _, _ = rank_goal_weights(list(GOAL_KEYS))
-st.dataframe(
-    [
-        {"Place": f"{i + 1}", "Weight": f"{_ranked_weights[k]:.0%}"}
-        for i, k in enumerate(GOAL_KEYS)
-    ],
-    hide_index=True,
-    use_container_width=True,
-)
+st.markdown("**Goal order**")
 st.caption(
-    "Rank-sum weights: with n goals in your list, 1st counts n, 2nd n − 1, … last 1, "
-    "divided by the total. Removed goals count 0. No goals left → equal weights + note."
+    "Farmers put goals in order; the UI shows place numbers only (1st, 2nd, …), "
+    "not percentages. Behind the scenes, with n goals listed, 1st counts n, 2nd n − 1, "
+    "… last 1. Removed goals count 0. No goals left → equal weights + note."
 )
 
 st.markdown("**Soil available water (FAO-56 Table 19 midpoints)**")

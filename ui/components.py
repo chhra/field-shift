@@ -142,39 +142,6 @@ def question(num: int | None, text: str, why: str | None = None) -> None:
     )
 
 
-_MIX_LABELS = {
-    "water": "Water",
-    "forage": "Animal feed",
-    "nitrogen": "Nitrogen",
-    "erosion": "Erosion",
-    "organic_matter": "Organic matter",
-    "market": "Market",
-}
-
-
-def goal_mix_bar(weights: dict[str, float]) -> None:
-    """One stacked bar: each goal's share of the ranking, in its score colour."""
-    keys = [k for k in weights if weights[k] > 0]
-    segs = "".join(
-        f'<div class="fs-mix-seg" style="flex:{weights[k]:.4f};'
-        f'background:{SCORE_COLORS.get(k, PRIMARY)}" '
-        f'title="{_MIX_LABELS.get(k, k)} {weights[k]:.0%}"></div>'
-        for k in keys
-    )
-    legend = "".join(
-        f'<span><i style="background:{SCORE_COLORS.get(k, PRIMARY)}"></i>'
-        f"{_MIX_LABELS.get(k, k)} <strong>{weights[k]:.0%}</strong></span>"
-        for k in keys
-    )
-    summary = ", ".join(f"{_MIX_LABELS.get(k, k)} {weights[k]:.0%}" for k in keys)
-    st.markdown(
-        f'<div class="fs-mix"><p class="fs-mix-title">Your order shapes the ranking like this</p>'
-        f'<div class="fs-mix-bar" role="img" aria-label="{html.escape(summary)}">{segs}</div>'
-        f'<div class="fs-mix-legend">{legend}</div></div>',
-        unsafe_allow_html=True,
-    )
-
-
 def demo_field_cards(
     cards: list[dict[str, Any]],
 ) -> str | None:
@@ -244,7 +211,6 @@ __all__ = [
     "demo_field_card",
     "demo_field_cards",
     "fact_chips",
-    "goal_mix_bar",
     "hero",
     "question",
     "recommendation_banner",

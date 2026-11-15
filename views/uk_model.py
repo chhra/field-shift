@@ -12,6 +12,10 @@ import json
 import streamlit as st
 from fieldshift.engine.inputs_config import (
     QUESTIONS,
+    SOIL_HELP,
+    SOIL_TILES,
+    WATER_HELP,
+    WATER_TILES,
     default_goal_order,
 )
 from team_model import app_adapter, model
@@ -198,17 +202,15 @@ if real_farm and _STATION_SUMMARY.exists():
 # ----------------------------------------------------------------------------
 
 section(
-    "Your farm",
-    "Five questions. Answer “Not sure” where you don't know: the tool will say what it "
-    "could not check.",
+    "About your farm",
+    "Five quick questions. Change anything that does not match your farm.",
     step=2,
 )
 
-question(
-    1,
-    QUESTIONS["crops"][0],
+question(1, *QUESTIONS["crops"])
+st.caption(
     "One main crop per harvest year, in order. A ley counts once and stays 3 years. "
-    "Leave cover crops out: the tool adds them where the soil would be bare.",
+    "Leave cover crops out: the tool adds them where the soil would be bare."
 )
 n_crops = st.radio(
     "How many crops are in your rotation?",
@@ -216,6 +218,10 @@ n_crops = st.radio(
     index=2,
     horizontal=True,
     key="ukm-n",
+    help=(
+        "Count each main crop once, in the order you grow them. "
+        "Leave cover crops out."
+    ),
 )
 choices = app_adapter.crop_choices(crops)
 current: list[str] = []
@@ -232,43 +238,56 @@ for i in range(n_crops):
         )
 
 question(2, *QUESTIONS["water"])
+water_keys = list(WATER_TILES.keys())
 water = st.radio(
     "Water source",
-    list(model.WATER_SOURCES),
-    format_func=lambda k: model.WATER_SOURCES[k],
+    water_keys,
+    index=water_keys.index("rain_only"),
+    format_func=lambda k: WATER_TILES[k],
     horizontal=True,
-    key="ukm-water",
+    key="water-cat-ukm",
+    help=WATER_HELP,
     label_visibility="collapsed",
 )
 
 question(3, *QUESTIONS["soil"])
-soil_keys = list(model.SOIL_TYPES)
+soil_keys = list(SOIL_TILES.keys())
 soil = st.radio(
     "Soil type",
     soil_keys,
     index=soil_keys.index("loamy"),
-    format_func=lambda k: model.SOIL_TYPES[k],
+    format_func=lambda k: SOIL_TILES[k],
     horizontal=True,
-    key="ukm-soil",
+    key="soil-cat-ukm",
+    help=SOIL_HELP,
     label_visibility="collapsed",
 )
 
 question(4, *QUESTIONS["goals"])
 goal_order = goal_ranking("ukm", default_goal_order(app_adapter.DEFAULT_GOALS))
 
-question(None, "What if seasons ran warmer?")
-st.caption(
-    "Not a forecast. Every day in the NASA record is made this much warmer, "
-    "then heat stress and frost are worked out again for each crop."
+section(
+    "What if the weather changes?",
+    "Optional, and not a forecast: see which options still hold up if seasons ran warmer.",
+    step=3,
 )
-warming = st.radio(
-    "Warming",
-    [0.0, 1.0, 2.0],
-    format_func=lambda v: "Today" if v == 0 else f"+{v:g} °C",
+question(None, "If seasons ran warmer")
+temp_opts = [
+    ("As now", 0.0),
+    (":material/thermometer: +1 °C", 1.0),
+    (":material/thermometer_add: +2 °C", 2.0),
+]
+temp_labels = [t[0] for t in temp_opts]
+temp_pick = st.radio(
+    "Temperature",
+    temp_labels,
+    index=0,
     horizontal=True,
-    key="ukm-warm",
+    key="temp-cat-ukm",
+    help="Example: +2 °C means warmer seasons on top of today’s climate.",
     label_visibility="collapsed",
 )
+warming = dict(temp_opts)[temp_pick]
 
 # ----------------------------------------------------------------------------
 # Results
@@ -276,8 +295,8 @@ warming = st.radio(
 
 section(
     "Your options",
-    "Your rotation, the recommended option, and an alternative — compare them like plans.",
-    step=3,
+    "Compare your rotation with the recommended and alternative options.",
+    step=4,
 )
 
 try:
@@ -317,7 +336,7 @@ render_uk_option_plans(results)
 section(
     "How reliable is this?",
     "This tool supports your judgement and your agronomist's. It does not replace them.",
-    step=4,
+    step=5,
 )
 st.markdown(
     "- **Rules, not predictions.** Options are compared with each other. They are not "
