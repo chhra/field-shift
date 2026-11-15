@@ -6,21 +6,15 @@ import json
 from typing import Any
 
 import streamlit as st
-from fieldshift.cache import CACHE_DIR
 from fieldshift.data.ee_client import init_ee
 from fieldshift.geo import polygon_area_ha, polygon_from_point
 from fieldshift.models import FieldConditions
-from fieldshift.services import analyze_field, list_demo_fields, using_mock_data
+from fieldshift.services import analyze_field, using_mock_data
 from streamlit_folium import st_folium
+from team_model.live_climate import in_uk
 from ui.components import demo_field_cards, hero, section
 from ui.map import field_map
 from ui.mock_banner import show_mock_banner
-
-_ROTATION_LABEL = {
-    "iowa": "Maize → Soybean",
-    "uk": "Winter wheat",
-    "punjab": "Rice → Winter wheat",
-}
 
 
 @st.cache_data(ttl=3600, show_spinner=False)
@@ -44,35 +38,30 @@ hero(
 )
 
 section(
-    "Try a demo field",
-    "Three contrasting farms pre-loaded from NASA / ESA / USGS archives.",
+    "Try the demo field",
+    "Rothamsted Broadbalk — the world's longest-running field experiment, and the one "
+    "field here with physical ground measurements: a rain gauge recording on this farm "
+    "since 1853. Opens the UK rotation model, where NASA satellite rainfall is checked "
+    "against that gauge.",
 )
-fields = list_demo_fields()
-card_payload = []
-for field in fields:
-    thumb = CACHE_DIR / f"demo_{field.id}_ndvi_thumb.png"
-    if not thumb.exists():
-        thumb = CACHE_DIR / f"demo_{field.id}_ndvi.gif"
-    card_payload.append(
+opened = demo_field_cards(
+    [
         {
-            "id": field.id,
-            "name": field.name,
-            "climate": field.climate_label,
-            "country": field.country,
-            "rotation": _ROTATION_LABEL.get(field.id, "—"),
-            "thumb_path": str(thumb) if thumb.exists() else None,
+            "id": "broadbalk",
+            "name": "Rothamsted Broadbalk",
+            "climate": "Temperate oceanic — long-term experiment",
+            "country": "United Kingdom · Harpenden",
+            "rotation": "Winter wheat system",
+            "thumb_path": None,
+            "button_label": "Open the UK model",
         }
-    )
-opened_id = demo_field_cards(card_payload)
-if opened_id:
-    field = next(f for f in fields if f.id == opened_id)
-    st.session_state["field_id"] = field.id
-    st.session_state["field_polygon"] = field.polygon
-    st.session_state.pop("custom_conditions", None)
-    # Re-apply demo defaults for rotation / cycle on Field page.
-    st.session_state.pop("_cycle_field", None)
-    st.session_state.pop("_rotation_field", None)
-    st.switch_page("views/field.py")
+    ]
+)
+if opened:
+    # Broadbalk card: clear any entered location so the model shows Rothamsted.
+    st.session_state.pop("ukm_lat", None)
+    st.session_state.pop("ukm_lon", None)
+    st.switch_page("views/uk_model.py")
 
 section(
     "Analyze my own field",
@@ -158,10 +147,22 @@ if locate == "Enter coordinates":
     )
     m = field_map(coord_poly, center=(float(lat), float(lon)), zoom=14, draw=False)
     st_folium(m, width=None, height=420, key=f"home-coords-{lat:.4f}-{lon:.4f}-{size_ha:.0f}")
-    st.caption(
-        "Adjust coordinates or size to move/resize the outline. "
-        "When it looks right, run analysis below."
-    )
+    st.caption("Adjust the coordinates or size until the outline sits on your field.")
+    if st.button(
+        "Open the UK model for this location",
+        type="primary",
+        use_container_width=True,
+        key="coords-to-ukm",
+    ):
+        if in_uk(float(lat), float(lon)):
+            st.session_state["ukm_lat"] = float(lat)
+            st.session_state["ukm_lon"] = float(lon)
+            st.switch_page("views/uk_model.py")
+        else:
+            st.error(
+                "The UK model only covers UK fields. Enter coordinates within the UK "
+                "(roughly 49.5–61 °N, −8.7–2.1 °E)."
+            )
 else:
     m = field_map(draw=True, center=(42.0, -93.6), zoom=5)
     map_state = st_folium(m, width=None, height=400, key="home-draw")

@@ -1,0 +1,137 @@
+{
+  "period": "2000-2024",
+  "months_compared": 300,
+  "nasa_point": {
+    "latitude": 51.809,
+    "longitude": -0.373,
+    "distance_to_station_km": 0.0
+  },
+  "mean_annual_rain_mm": {
+    "station_corrected": 735,
+    "station_raw": 788,
+    "nasa_power": 725
+  },
+  "monthly_agreement_corrected_station": {
+    "bias_mm_per_month": -0.8,
+    "bias_pct": -1.4,
+    "mean_abs_error_mm": 11.7,
+    "rmse_mm": 17.0,
+    "correlation": 0.87
+  },
+  "monthly_agreement_raw_station": {
+    "bias_mm_per_month": -5.2,
+    "bias_pct": -7.9,
+    "mean_abs_error_mm": 13.0,
+    "rmse_mm": 19.0,
+    "correlation": 0.87
+  },
+  "yearly_correlation": 0.87,
+  "by_season": {
+    "winter (Dec-Feb)": {
+      "station_mm_per_month": 66.7,
+      "nasa_mm_per_month": 60.6,
+      "bias_mm_per_month": -6.1,
+      "bias_pct": -9.1,
+      "mean_abs_error_mm": 10.4,
+      "rmse_mm": 16.4,
+      "correlation": 0.88
+    },
+    "spring (Mar-May)": {
+      "station_mm_per_month": 51.3,
+      "nasa_mm_per_month": 53.1,
+      "bias_mm_per_month": 1.8,
+      "bias_pct": 3.5,
+      "mean_abs_error_mm": 8.3,
+      "rmse_mm": 11.3,
+      "correlation": 0.93
+    },
+    "summer (Jun-Aug)": {
+      "station_mm_per_month": 55.8,
+      "nasa_mm_per_month": 61.6,
+      "bias_mm_per_month": 5.8,
+      "bias_pct": 10.3,
+      "mean_abs_error_mm": 16.5,
+      "rmse_mm": 21.3,
+      "correlation": 0.79
+    },
+    "autumn (Sep-Nov)": {
+      "station_mm_per_month": 71.3,
+      "nasa_mm_per_month": 66.5,
+      "bias_mm_per_month": -4.8,
+      "bias_pct": -6.8,
+      "mean_abs_error_mm": 11.8,
+      "rmse_mm": 17.5,
+      "correlation": 0.9
+    }
+  },
+  "wettest_10pct_of_months": {
+    "station_at_least_mm": 105.0,
+    "months": 30,
+    "station_mean_mm": 131.1,
+    "nasa_mean_mm": 102.1,
+    "nasa_vs_station_pct": -22.1
+  },
+  "driest_10pct_of_months": {
+    "station_at_most_mm": 22.3,
+    "months": 30,
+    "station_mean_mm": 13.5,
+    "nasa_mean_mm": 21.2
+  },
+  "mean_by_calendar_month_mm": {
+    "Jan": {
+      "station": 68.5,
+      "nasa": 60.5
+    },
+    "Feb": {
+      "station": 58.3,
+      "nasa": 53.4
+    },
+    "Mar": {
+      "station": 49.1,
+      "nasa": 51.8
+    },
+    "Apr": {
+      "station": 47.5,
+      "nasa": 46.4
+    },
+    "May": {
+      "station": 57.3,
+      "nasa": 61.1
+    },
+    "Jun": {
+      "station": 43.6,
+      "nasa": 57.8
+    },
+    "Jul": {
+      "station": 56.9,
+      "nasa": 62.5
+    },
+    "Aug": {
+      "station": 66.9,
+      "nasa": 64.4
+    },
+    "Sep": {
+      "station": 52.9,
+      "nasa": 51.3
+    },
+    "Oct": {
+      "station": 82.5,
+      "nasa": 76.6
+    },
+    "Nov": {
+      "station": 78.4,
+      "nasa": 71.5
+    },
+    "Dec": {
+      "station": 73.5,
+      "nasa": 68.0
+    }
+  },
+  "method": {
+    "nasa": "NASA POWER daily PRECTOTCORR summed to calendar months (grid cell about 0.5 x 0.625 degrees)",
+    "station": "Rothamsted Meteorological Station monthly totals (one rain gauge)",
+    "gauge_correction": "station months in 2004-2020 divided by 1.1098 (ARG100 gauge, per the dataset ReadMe)",
+    "difference": "NASA minus station; positive = NASA wetter"
+  },
+  "station_source": "Perryman S.A.M. & Scott T. (2025) Total Monthly and Annual Rain at Rothamsted March 1853-2024. Electronic Rothamsted Archive, Rothamsted Research. DOI 10.23637/rmsTMArain1853-2024-01. CC BY 4.0."
+}

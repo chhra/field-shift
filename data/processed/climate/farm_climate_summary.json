@@ -1,0 +1,51 @@
+{
+  "annual_rain_mm": 720,
+  "wet_months": [
+    1,
+    10,
+    11,
+    12
+  ],
+  "dry_months": [
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "frost_months": [
+    1,
+    2,
+    3,
+    4,
+    11,
+    12
+  ],
+  "coldest_temp_c": -4.4,
+  "growing_temp_c": 14.1,
+  "summer_drying": true,
+  "heat_rising": true,
+  "record_min_temp_c": -8.2,
+  "frost_days_per_year": 44.2,
+  "median_last_spring_frost": "04-14",
+  "median_first_autumn_frost": "11-18",
+  "median_frost_free_days": 216,
+  "summer_rain_recent_mm": 169.1,
+  "summer_rain_earlier_mm": 189.1,
+  "hot_days_recent": 19.2,
+  "hot_days_earlier": 10.8,
+  "recent_period": "2016-2025",
+  "earlier_period": "2000-2015",
+  "latitude": 51.809,
+  "longitude": -0.373,
+  "years": "2000-2025",
+  "source": "NASA POWER daily (t2m, t2m_max, t2m_min, prectotcorr); ET0 by Hargreaves-Samani",
+  "thresholds": {
+    "frost_c": 0.0,
+    "hard_frost_c": -5.0,
+    "hot_day_c": 25.0,
+    "frost_month_days": 1.0,
+    "trend_change": 0.1
+  }
+}

@@ -4,10 +4,12 @@ import pandas as pd
 import ast
 import re
 
-# Run from the project root
-INPUT = Path("data/raw/ecocrop/ecocrop.csv")
-OUTPUT = Path("data/processed/ecocrop_uk_25_crops.csv")
-REPORT = Path("data/processed/ecocrop_uk_25_matching_report.csv")
+# Paths are built from this file's location, so it runs from any folder
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+INPUT = PROJECT_ROOT / "data" / "raw" / "ecocrop" / "ecocrop.csv"
+OUTPUT_DIR = PROJECT_ROOT / "data" / "processed" / "ecocrop"
+OUTPUT = OUTPUT_DIR / "ecocrop_uk_25_crops.csv"
+REPORT = OUTPUT_DIR / "ecocrop_uk_25_matching_report.csv"
 
 # The 25 selected UK crop entries
 crops = [

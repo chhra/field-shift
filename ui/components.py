@@ -208,7 +208,7 @@ def demo_field_cards(
                 unsafe_allow_html=True,
             )
             if st.button(
-                "Open field report",
+                card.get("button_label", "Open field report"),
                 key=f"demo-{card['id']}",
                 use_container_width=True,
                 type="primary",
