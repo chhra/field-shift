@@ -30,13 +30,44 @@ def _crops() -> dict[str, dict[str, Any]]:
     return {c["id"]: c for c in load_crops()}
 
 
+# Extra labels/families for crops that only exist in the UK model (or aliases).
+_META: dict[str, dict[str, Any]] = {}
+
+
+def register_crop_meta(
+    crop_id: str,
+    *,
+    name: str | None = None,
+    family: str | None = None,
+    cover: bool = False,
+) -> None:
+    """Tell the calendar how to label/colour a crop id that is not in crops.json."""
+    row = dict(_META.get(crop_id) or {})
+    if name:
+        row["name"] = name
+    if family:
+        row["family"] = family
+    if cover:
+        row["type"] = "cover"
+    _META[crop_id] = row
+
+
 def short_name(crop_id: str) -> str:
-    name = str(_crops().get(crop_id, {}).get("name") or crop_id.replace("_", " "))
+    meta = _META.get(crop_id) or {}
+    name = str(
+        _crops().get(crop_id, {}).get("name")
+        or meta.get("name")
+        or crop_id.replace("_", " ")
+    )
     return name.split(" / ")[0].split(" (")[0]
 
 
 def is_cover_crop(crop_id: str) -> bool:
-    return _crops().get(crop_id, {}).get("type") == "cover"
+    if (_META.get(crop_id) or {}).get("type") == "cover":
+        return True
+    if _crops().get(crop_id, {}).get("type") == "cover":
+        return True
+    return "cover" in crop_id.lower()
 
 
 def months_from_text(text: str) -> list[int]:
@@ -116,12 +147,31 @@ def _stripes(base: str) -> str:
 def _fill(cell: Cell) -> str:
     if cell is None:
         return BARE_FILL
-    fam = str(_crops().get(cell[0], {}).get("family") or "")
+    fam = str(
+        _crops().get(cell[0], {}).get("family")
+        or (_META.get(cell[0]) or {}).get("family")
+        or ""
+    )
     same_family = [cid for cid, c in _crops().items() if c.get("family") == fam]
     # Alternate shades so two neighbouring cereals (e.g. rice → wheat) stay distinct.
     alt = cell[0] in same_family and same_family.index(cell[0]) % 2 == 1
     base = (FAMILY_FILL_ALT if alt else FAMILY_FILL).get(fam, OTHER_FILL)
     return _stripes(base) if cell[1] else base
+
+
+def title_from_crops(items: list[tuple[str, list[int]]]) -> str:
+    """Field-style title: 'Winter wheat (Oct–Aug) → Spring peas (Mar–Jul)'."""
+    parts: list[str] = []
+    for crop_id, months in items:
+        if not months:
+            parts.append(short_name(crop_id))
+            continue
+        a, b = MONTH_ABBR[months[0] - 1], MONTH_ABBR[months[-1] - 1]
+        label = short_name(crop_id)
+        if is_cover_crop(crop_id) and "cover" not in label.lower():
+            label = f"{label} cover"
+        parts.append(f"{label} ({a}–{b})")
+    return " → ".join(parts)
 
 
 def _run_text(start: int, n: int, cell: Cell) -> str:

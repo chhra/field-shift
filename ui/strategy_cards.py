@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from functools import lru_cache
 from typing import Any
 
 import streamlit as st
@@ -12,12 +13,81 @@ from fieldshift.engine.card_copy import (
     top_criterion_diffs,
 )
 from fieldshift.models import StrategyCard
+from team_model import app_adapter, model
 
 from ui.option_plans import render_comparison_plans
 from ui.source_caption import source_caption
-from ui.year_strip import rows_from_sequence, year_strip_html
+from ui.year_strip import (
+    month_range,
+    register_crop_meta,
+    rows_from_crops,
+    rows_from_sequence,
+    title_from_crops,
+    year_strip_html,
+)
 
 _TIER_ORDER = ("baseline", "best_fit", "worth_considering", "not_suitable")
+_UK_FAMILY = {
+    "cereal": "poaceae",
+    "legume": "fabaceae",
+    "brassica": "brassicaceae",
+}
+_MODEL_TO_APP = {v: k for k, v in app_adapter.APP_CROP_TO_MODEL.items()}
+
+
+@lru_cache(maxsize=1)
+def _uk_crops() -> dict[str, Any]:
+    return model.load_crops()
+
+
+def _uk_crop_id(name: str, *, cover: bool = False) -> str:
+    """Map a UK model crop name to a calendar id (prefer Field Shift ids)."""
+    display = name.replace(" (cover)", "").replace("(cover)", "").strip()
+    row = _uk_crops().get(name) or {}
+    is_cover = cover or str(row.get("role") or "") == "cover"
+    if name in _MODEL_TO_APP:
+        cid = _MODEL_TO_APP[name]
+    else:
+        cid = (
+            name.lower()
+            .replace("(", "")
+            .replace(")", "")
+            .replace(" ", "_")
+            .strip("_")
+        )
+        if is_cover and not cid.endswith("_cover"):
+            cid = f"{cid}_cover"
+    register_crop_meta(
+        cid,
+        name=display,
+        family=_UK_FAMILY.get(str(row.get("family") or "")) or None,
+        cover=is_cover,
+    )
+    return cid
+
+
+def _uk_calendar_items(
+    rotation: list[tuple[str, str | None]],
+) -> list[tuple[str, list[int]]]:
+    """(crop_id, months) list for year_strip, matching Field page calendars."""
+    crops = _uk_crops()
+    items: list[tuple[str, list[int]]] = []
+    for main, cover in rotation:
+        c = crops[main]
+        cid = _uk_crop_id(main)
+        if model.is_perennial(c):
+            months = list(range(1, 13))
+        else:
+            months = month_range(int(c["sow_month"]), int(c["harvest_month"]))
+        items.append((cid, months))
+        if cover:
+            items.append(
+                (
+                    _uk_crop_id(cover, cover=True),
+                    list(model.cover_window(cover, crops)),
+                )
+            )
+    return items
 
 
 def render_strategy_cards(
@@ -191,7 +261,7 @@ def _field_details(plan: dict[str, Any]) -> None:
 
 
 def render_uk_option_plans(results: list[dict[str, Any]]) -> None:
-    """UK-model results as the same plan boxes (current / recommended / alternative)."""
+    """UK-model results as Field-style plan boxes with farming-year calendars."""
     if not results:
         st.info("No options to compare yet.")
         return
@@ -210,16 +280,29 @@ def render_uk_option_plans(results: list[dict[str, Any]]) -> None:
             role = "alternative"
             blurb = "A different path that still fits your priorities."
             featured = False
+
+        steps = list(r.get("crops") or [])
+        cal_items = _uk_calendar_items(steps) if steps else []
+        title = (
+            title_from_crops(cal_items)
+            if cal_items
+            else (r.get("rotation") or r.get("name") or "—")
+        )
         years = r.get("years") or 0
         year_word = "year" if years == 1 else "years"
         plans.append(
             {
                 "key": f"ukm-{i}",
                 "role": role,
-                "title": r.get("rotation") or r.get("name") or "—",
+                "title": title,
                 "meta": f"{years} {year_word}",
                 "blurb": blurb,
                 "features": list(r.get("benefits") or [])[:5],
+                "calendar_html": (
+                    year_strip_html(rows_from_crops(cal_items), compact=True)
+                    if cal_items
+                    else ""
+                ),
                 "featured": featured,
                 "_uk": r,
             }
