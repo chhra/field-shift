@@ -90,7 +90,7 @@ def test_ui_hex_colours_come_from_tokens() -> None:
 
 
 def test_source_caption_has_no_underscores() -> None:
-    from ui.source_caption import _friendly_dataset
+    from ui.glossary import friendly_source
 
     samples = [
         "rain_best",
@@ -99,7 +99,7 @@ def test_source_caption_has_no_underscores() -> None:
         "Sentinel-2 / SMAP / rain_best / water balance",
     ]
     for s in samples:
-        out = _friendly_dataset(s)
+        out = friendly_source(s)
         assert "_" not in out, f"underscore remains in {out!r} from {s!r}"
 
 

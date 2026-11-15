@@ -8,13 +8,7 @@ from typing import Any
 
 import streamlit as st
 
-_ROLE_EYEBROW = {
-    "current": "Your rotation",
-    "recommended": "Recommended",
-    "alternative": "Alternative",
-    "other": "Also worth considering",
-    "unsuitable": "Not a fit here",
-}
+from ui.plans import ROLE_EYEBROW as _ROLE_EYEBROW
 
 
 def render_comparison_plans(

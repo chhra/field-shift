@@ -145,19 +145,34 @@ def _stripes(base: str) -> str:
     )
 
 
-def _fill(cell: Cell) -> str:
+def fill_tone(cell: Cell) -> str:
+    """Colour key for a cell: 'bare', 'other', a crop family, or '<family>-alt'."""
     if cell is None:
-        return BARE_FILL
+        return "bare"
     fam = str(
         _crops().get(cell[0], {}).get("family")
         or (_META.get(cell[0]) or {}).get("family")
         or ""
     )
+    if fam not in FAMILY_FILL:
+        return "other"
     same_family = [cid for cid, c in _crops().items() if c.get("family") == fam]
     # Alternate shades so two neighbouring cereals (e.g. rice → wheat) stay distinct.
     alt = cell[0] in same_family and same_family.index(cell[0]) % 2 == 1
-    base = (FAMILY_FILL_ALT if alt else FAMILY_FILL).get(fam, OTHER_FILL)
-    return _stripes(base) if cell[1] else base
+    return f"{fam}-alt" if alt else fam
+
+
+def _fill(cell: Cell) -> str:
+    tone = fill_tone(cell)
+    if tone == "bare":
+        return BARE_FILL
+    if tone == "other":
+        base = OTHER_FILL
+    elif tone.endswith("-alt"):
+        base = FAMILY_FILL_ALT[tone.removesuffix("-alt")]
+    else:
+        base = FAMILY_FILL[tone]
+    return _stripes(base) if cell and cell[1] else base
 
 
 def title_from_crops(items: list[tuple[str, list[int]]]) -> str:
@@ -183,6 +198,36 @@ def _run_text(start: int, n: int, cell: Cell) -> str:
 
 def _row_summary(row: Row) -> str:
     return ", ".join(_run_text(*run) for run in _runs(row))
+
+
+def calendar_model(rows: list[Row]) -> list[dict[str, Any]]:
+    """The same calendar as ``year_strip_html`` as data: one entry per year row.
+
+    Segments use 1-based start months; ``tone`` is a colour key from ``fill_tone``.
+    """
+    labelled = len(rows) > 1
+    out: list[dict[str, Any]] = []
+    for y, row in enumerate(rows):
+        summary = _row_summary(row)
+        out.append(
+            {
+                "label": f"Year {y + 1}" if labelled else None,
+                "summary": f"Year {y + 1}: {summary}" if labelled else summary,
+                "segments": [
+                    {
+                        "start": start + 1,
+                        "span": n,
+                        "crop_id": cell[0] if cell else None,
+                        "name": short_name(cell[0]) if cell else "Bare soil",
+                        "cover": bool(cell and cell[1]),
+                        "tone": fill_tone(cell),
+                        "title": _run_text(start, n, cell),
+                    }
+                    for start, n, cell in _runs(row)
+                ],
+            }
+        )
+    return out
 
 
 def year_strip_html(rows: list[Row], *, compact: bool = False, legend: bool = False) -> str:

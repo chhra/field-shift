@@ -41,3 +41,15 @@ SOURCE_LABELS: dict[str, str] = {
     "grace_lwe_cm": "GRACE water storage",
     "power_t2m_c": "NASA POWER temperature",
 }
+
+
+def friendly_source(dataset: str) -> str:
+    """Replace internal dataset ids with farmer-facing labels; never show underscores."""
+    key = dataset.strip()
+    if key in SOURCE_LABELS:
+        return SOURCE_LABELS[key]
+    out = dataset
+    for raw, label in SOURCE_LABELS.items():
+        if raw in out:
+            out = out.replace(raw, label)
+    return out.replace("_", " ")

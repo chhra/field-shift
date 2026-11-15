@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-import streamlit as st
+# Streamlit is imported inside the inject_* functions: the web API imports these
+# tokens (via ui.year_strip) and must not pull in Streamlit.
 
 # ---------------------------------------------------------------------------
 # Colour tokens (docs/DESIGN.md)
@@ -104,6 +105,8 @@ _THEME_VERSION = "option-plans-v2"
 
 def inject_nav_active(active_path: str) -> None:
     """Green underline on the current top tab (by Streamlit page href)."""
+    import streamlit as st
+
     # Home uses empty href; other pages use their url_path.
     href = (active_path or "").strip()
     scope = 'div[data-testid="stHorizontalBlock"]:has(.fs-brand)'
@@ -132,6 +135,8 @@ def inject_nav_active(active_path: str) -> None:
 
 def inject_theme() -> None:
     """Inject global CSS on every run (Streamlit clears custom HTML on rerun)."""
+    import streamlit as st
+
     st.session_state["_fs_theme_ver"] = _THEME_VERSION
     st.markdown(
         f"""
