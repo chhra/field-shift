@@ -170,8 +170,12 @@ st.markdown(
     '<p class="fs-eyebrow">FIELD REPORT</p>',
     unsafe_allow_html=True,
 )
-st.title(conditions.name)
-st.caption(f"{conditions.climate_label} · {conditions.country or 'Custom field'}")
+# Demo placenames (e.g. "Central Iowa (demo)") stay out of the UI.
+_field_label = conditions.name or ""
+if _field_label and "(demo)" not in _field_label.lower():
+    st.title(_field_label)
+if conditions.climate_label:
+    st.caption(conditions.climate_label)
 
 # --- 1. Your field (fragment: NDVI/RGB toggles must not re-run the whole page) ---
 def _imagery_block() -> None:
@@ -383,9 +387,14 @@ def _farm_block() -> None:
         area = f", about {polygon_area_ha(conditions.polygon):.0f} ha"
     except Exception:
         area = ""
+    _watch = (
+        html.escape(_field_label)
+        if _field_label and "(demo)" not in _field_label.lower()
+        else "this field"
+    )
     st.markdown(
         f'<p class="fs-farm-confirm"><span class="fs-tick" aria-hidden="true">✓</span>'
-        f"<span>Satellites are watching <strong>{html.escape(conditions.name)}</strong>"
+        f"<span>Satellites are watching <strong>{_watch}</strong>"
         f"{area}</span></p>",
         unsafe_allow_html=True,
     )
