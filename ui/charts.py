@@ -33,7 +33,8 @@ MONTH_LABELS = [
 ]
 
 _FONT = {
-    "family": "Source Sans 3, Helvetica Neue, Helvetica, Arial, sans-serif",
+    # Keep quotes: unquoted "Source Sans 3" is invalid CSS and the browser drops the stack.
+    "family": '"Source Sans 3", "Helvetica Neue", Helvetica, Arial, sans-serif',
     "size": 13,
     "color": TEXT,
 }
