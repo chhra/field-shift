@@ -83,7 +83,7 @@ CONTRAST_PAIRS: list[tuple[str, str, str, float]] = [
     ("text_on_sidebar", TEXT, SIDEBAR, 4.5),
 ]
 
-_THEME_VERSION = "farm-plain-v1"
+_THEME_VERSION = "ui-polish-v1"
 
 
 def inject_nav_active(active_path: str) -> None:
@@ -395,6 +395,21 @@ p, .stMarkdown p {{
   margin: 0 0 24px 0;
   max-width: 640px;
   line-height: 1.5;
+}}
+
+/* Horizontal radios — wrap on narrow widths; keep touch targets */
+div[data-testid="stRadio"] [role="radiogroup"] {{
+  flex-wrap: wrap !important;
+  gap: 6px 14px !important;
+  row-gap: 8px !important;
+}}
+div[data-testid="stRadio"] label {{
+  min-height: 40px !important;
+  line-height: 1.35 !important;
+}}
+div[data-testid="stCheckbox"] label {{
+  min-height: 40px !important;
+  line-height: 1.4 !important;
 }}
 
 /* About your farm — plain questions a farmer can answer */
@@ -926,6 +941,13 @@ div[data-testid="stDataFrame"] {{
   border: none;
   border-radius: 0;
   overflow: hidden;
+}}
+/* Hide Streamlit chrome on images/tables — quieter for farmers */
+div[data-testid="stImage"] [data-testid="stElementToolbar"],
+div[data-testid="stDataFrame"] [data-testid="stElementToolbar"],
+div[data-testid="stDataFrameToolbar"],
+div[data-testid="stPlotlyChart"] [data-testid="stElementToolbar"] {{
+  display: none !important;
 }}
 
 [data-testid="stImage"] img {{

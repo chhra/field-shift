@@ -322,6 +322,7 @@ st.plotly_chart(
     _chart,
     use_container_width=True,
     config={"displayModeBar": False},
+    key=f"conditions-chart-{field_id}",
 )
 st.caption(
     "Plant greenness (line) · Rain mm (bars) · Water balance (dashed). "
@@ -439,8 +440,17 @@ new_rot: list[str] = []
 plant_overrides: dict[str, int] = {}
 harvest_overrides: dict[str, int] = {}
 month_gaps: list[str] = []
-all_slots = cash_slots + cover_slots
-slot_cols = st.columns(max(1, min(4, len(all_slots) or 1)))
+# One cover picker is enough — the bare window repeats each year.
+cover_ui = cover_slots[:1]
+if cover_ui:
+    cover_ui[0] = {
+        **cover_ui[0],
+        "id": "cover_shared",
+        "label": "Cover in bare window",
+    }
+all_slots = cash_slots + cover_ui
+n_slot_cols = max(1, min(3, len(all_slots) or 1))
+slot_cols = st.columns(n_slot_cols)
 for i, slot in enumerate(all_slots):
     with slot_cols[i % len(slot_cols)]:
         options = crops_for_slot(slot, engine_feats, always_allow=preferred)
@@ -670,9 +680,15 @@ input_penalty = bool(water_gaps or soil_gaps)
 # --- 4 climate + 5 options ---
 def _options_block() -> None:
     section(
-        "What if the climate shifts?",
-        "Optional scenario — options below re-score from cached features only.",
+        "What if the weather changes?",
+        "Optional check — not a forecast. We reuse today’s satellite record and "
+        "ask: if rain or heat shifted, which rotations still look good for you?",
         step=4,
+    )
+    st.markdown(
+        '<p class="fs-farm-why">Scores update right away. The map and timelapse '
+        "stay the same.</p>",
+        unsafe_allow_html=True,
     )
     rain_opts = [("Drier (−20%)", 0.8), ("Today", 1.0), ("Wetter (+20%)", 1.2)]
     temp_opts = [("Today", 0.0), ("+1 °C", 1.0), ("+2 °C", 2.0)]
@@ -680,16 +696,25 @@ def _options_block() -> None:
     temp_labels = [t[0] for t in temp_opts]
     c_rain, c_temp = st.columns(2)
     with c_rain:
+        st.markdown(
+            '<p class="fs-farm-q">What if yearly rain changed?</p>',
+            unsafe_allow_html=True,
+        )
         rain_pick = st.radio(
             "Rainfall",
             rain_labels,
             index=1,
             horizontal=True,
             key=f"rain-cat-{field_id}",
-            help="Example: Drier means about 20% less rain than today.",
+            help="Example: Drier means about one-fifth less rain than a typical year here.",
+            label_visibility="collapsed",
         )
         st.session_state["rain_mult"] = dict(rain_opts)[rain_pick]
     with c_temp:
+        st.markdown(
+            '<p class="fs-farm-q">What if seasons ran warmer?</p>',
+            unsafe_allow_html=True,
+        )
         temp_pick = st.radio(
             "Temperature",
             temp_labels,
@@ -697,6 +722,7 @@ def _options_block() -> None:
             horizontal=True,
             key=f"temp-cat-{field_id}",
             help="Example: +2 °C means warmer seasons on top of today’s climate.",
+            label_visibility="collapsed",
         )
         st.session_state["temp_offset"] = dict(temp_opts)[temp_pick]
 

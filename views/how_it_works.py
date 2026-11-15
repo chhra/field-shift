@@ -48,6 +48,7 @@ st.plotly_chart(
     pipeline_figure(),
     use_container_width=True,
     config={"displayModeBar": False},
+    key="how-pipeline-chart",
 )
 st.markdown(
     """
